@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Validator;
 
 class FuelExpenseController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
         $expenses = FuelExpense::with([
@@ -18,6 +21,9 @@ class FuelExpenseController extends Controller
         return response()->json(['data' => $expenses]);
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         // Ambil data task
@@ -61,13 +67,16 @@ class FuelExpenseController extends Controller
 
         $data = $request->all();
         $data['status'] = 'pending';
-        $data['unique_code'] = FuelExpense::generateUniqueCode(); // Generate unique code
+        $data['unique_code'] = FuelExpense::generateUniqueCode();
 
         $expense = FuelExpense::create($data);
 
         return response()->json(['message' => 'Pengajuan biaya berhasil dibuat', 'data' => $expense], 201);
     }
 
+    /**
+     * Display the specified resource.
+     */
     public function show($id)
     {
         $expense = FuelExpense::with([
@@ -76,6 +85,9 @@ class FuelExpenseController extends Controller
         return response()->json(['data' => $expense]);
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, $id)
     {
         $expense = FuelExpense::findOrFail($id);
@@ -101,6 +113,9 @@ class FuelExpenseController extends Controller
         return response()->json(['message' => 'Pengajuan biaya berhasil diupdate', 'data' => $expense]);
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy($id)
     {
         $expense = FuelExpense::findOrFail($id);
@@ -108,6 +123,9 @@ class FuelExpenseController extends Controller
         return response()->json(['message' => 'Pengajuan biaya berhasil dihapus']);
     }
 
+    /**
+     * Approve the fuel expense (by admin finance).
+     */
     public function approve($id)
     {
         $expense = FuelExpense::findOrFail($id);
@@ -121,7 +139,7 @@ class FuelExpenseController extends Controller
         $expense->approved_at = now();
         $expense->save();
 
-        // Catat keuangan
+        // Catat transaksi keuangan
         FinancialTransaction::create([
             'transaction_date' => now(),
             'type' => 'expense',
@@ -139,6 +157,9 @@ class FuelExpenseController extends Controller
         return response()->json(['message' => 'Pengajuan biaya disetujui', 'data' => $expense]);
     }
 
+    /**
+     * Reject the fuel expense (by admin finance).
+     */
     public function reject($id)
     {
         $expense = FuelExpense::findOrFail($id);

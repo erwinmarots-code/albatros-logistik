@@ -11,6 +11,13 @@ class UserSeeder extends Seeder
     public function run()
     {
         User::create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@albatros.com',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+        ]);
+
+        User::create([
             'name' => 'Admin PO',
             'email' => 'adminpo@albatros.com',
             'password' => Hash::make('password'),
@@ -29,13 +36,6 @@ class UserSeeder extends Seeder
             'email' => 'adminfinance@albatros.com',
             'password' => Hash::make('password'),
             'role' => 'admin_finance',
-        ]);
-
-        User::create([
-            'name' => 'Super Admin',
-            'email' => 'superadmin@albatros.com',
-            'password' => Hash::make('password'),
-            'role' => 'super_admin',
         ]);
     }
 }

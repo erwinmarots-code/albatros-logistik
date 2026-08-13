@@ -15,9 +15,13 @@
       <button @click="exportExcel" class="btn-export">
         <i class="fas fa-file-excel"></i> Export Excel
       </button>
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input v-model="searchQuery" type="text" class="search-input" placeholder="Cari kendaraan..." />
+      </div>
     </div>
 
-    <!-- Form Tambah/Edit -->
+    <!-- Form -->
     <div v-if="showForm && canCreate" class="form-container">
       <h3><i class="fas fa-edit"></i> {{ formMode === 'add' ? 'Tambah Kendaraan' : 'Edit Kendaraan' }}</h3>
       <form @submit.prevent="saveItem">
@@ -74,7 +78,7 @@
     </div>
 
     <!-- TABLE -->
-    <div class="table-wrapper" v-if="items && items.length">
+    <div class="table-wrapper" v-if="filteredItems.length">
       <table class="modern-table">
         <thead>
           <tr>
@@ -91,7 +95,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in items" :key="item.id">
+          <tr v-for="(item, index) in filteredItems" :key="item.id">
             <td>{{ index + 1 }}</td>
             <td><strong>{{ item.plate_number }}</strong></td>
             <td>{{ item.brand }}</td>
@@ -102,29 +106,28 @@
             <td><span :class="'status-badge-' + item.status">{{ statusMap[item.status] || item.status }}</span></td>
             <td>{{ formatRupiah(item.price) }}</td>
             <td class="action-cell">
-              <button v-if="canCreate" @click="editItem(item)" class="btn-edit" title="Edit"><i class="fas fa-edit"></i></button>
-              <button v-if="canCreate" @click="deleteItem(item.id)" class="btn-delete" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+              <button v-if="canCreate" @click="editItem(item)" class="btn-edit"><i class="fas fa-edit"></i></button>
+              <button v-if="canCreate" @click="deleteItem(item.id)" class="btn-delete"><i class="fas fa-trash-alt"></i></button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p v-else class="empty-message"><i class="fas fa-inbox"></i> Belum ada data kendaraan.</p>
+    <p v-else class="empty-message"><i class="fas fa-inbox"></i> {{ searchQuery ? 'Tidak ada kendaraan yang cocok dengan pencarian.' : 'Belum ada data kendaraan.' }}</p>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import axios from '../axios'   // <-- import axios dengan interceptor dan baseURL '/api'
+import axios from '../axios'
 import { formatRupiah, statusMap } from '../utils/helpers'
 
-// ===== USER ROLE =====
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const userRole = user.role || ''
 const canCreate = computed(() => userRole !== 'admin_finance' && userRole !== 'admin_transport')
 
-// ===== STATE =====
 const items = ref([])
+const searchQuery = ref('')
 const showForm = ref(false)
 const formMode = ref('add')
 const editingId = ref(null)
@@ -141,10 +144,22 @@ const form = reactive({
   price: '',
 })
 
-// ===== FUNGSI CRUD =====
+const filteredItems = computed(() => {
+  if (!searchQuery.value) return items.value
+  const q = searchQuery.value.toLowerCase()
+  return items.value.filter(item =>
+    item.plate_number?.toLowerCase().includes(q) ||
+    item.brand?.toLowerCase().includes(q) ||
+    item.model?.toLowerCase().includes(q) ||
+    item.color?.toLowerCase().includes(q) ||
+    item.fuel_type?.toLowerCase().includes(q) ||
+    item.status?.toLowerCase().includes(q)
+  )
+})
+
 const fetchItems = async () => {
   try {
-    const res = await axios.get('/vehicles')   // <-- TANPA prefix /api
+    const res = await axios.get('/vehicles')
     items.value = res.data.data || []
   } catch (error) {
     alert('Gagal memuat data: ' + error.message)
@@ -173,10 +188,10 @@ const closeForm = () => {
 const saveItem = async () => {
   try {
     if (formMode.value === 'add') {
-      await axios.post('/vehicles', form)   // <-- TANPA prefix /api
+      await axios.post('/vehicles', form)
       alert('Kendaraan berhasil ditambahkan!')
     } else {
-      await axios.put(`/vehicles/${editingId.value}`, form)   // <-- TANPA prefix /api
+      await axios.put(`/vehicles/${editingId.value}`, form)
       alert('Kendaraan berhasil diupdate!')
     }
     closeForm()
@@ -191,7 +206,7 @@ const deleteItem = async (id) => {
   if (!canCreate.value) return
   if (!confirm('Yakin hapus kendaraan ini?')) return
   try {
-    await axios.delete(`/vehicles/${id}`)   // <-- TANPA prefix /api
+    await axios.delete(`/vehicles/${id}`)
     alert('Kendaraan dihapus!')
     await fetchItems()
   } catch (error) {
@@ -199,12 +214,9 @@ const deleteItem = async (id) => {
   }
 }
 
-// ===== EXPORT EXCEL =====
 const exportExcel = async () => {
   try {
-    const response = await axios.get('/export/vehicles', {
-      responseType: 'blob'
-    })
+    const response = await axios.get('/export/vehicles', { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
@@ -221,14 +233,13 @@ onMounted(fetchItems)
 </script>
 
 <style scoped>
-/* ====== GAYA MODUL ====== */
 .module-container { max-width: 1200px; margin: 0 auto; }
 .module-header { margin-bottom: 20px; }
 .module-header h2 { font-size: 24px; color: #0d2b45; display: flex; align-items: center; gap: 10px; }
 .module-header h2 i { color: #1a4a7a; }
 .module-subtitle { color: #6c757d; font-size: 14px; margin-top: 2px; }
 
-.toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; align-items: center; }
 .btn-add, .btn-refresh, .btn-export {
   padding: 10px 22px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600;
   display: inline-flex; align-items: center; gap: 8px; transition: all 0.25s;
@@ -241,10 +252,25 @@ onMounted(fetchItems)
 .btn-export { background: linear-gradient(135deg, #007bff, #0069d9); color: white; }
 .btn-export:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,123,255,0.3); }
 
-.form-container {
-  background: white; border-radius: 16px; padding: 24px 28px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin: 16px 0 24px;
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  flex: 1;
+  max-width: 300px;
 }
+.search-wrapper:focus-within {
+  border-color: #1a4a7a;
+  box-shadow: 0 0 0 3px rgba(26, 74, 122, 0.12);
+}
+.search-icon { color: #94a3b8; margin-right: 8px; }
+.search-input { border: none; padding: 10px 0; font-size: 14px; width: 100%; outline: none; background: transparent; }
+
+.form-container { background: white; border-radius: 16px; padding: 24px 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin: 16px 0 24px; }
 .form-container h3 { font-size: 20px; color: #0d2b45; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 12px; margin-bottom: 20px; }
 .form-container h3 i { color: #1a4a7a; }
 .form-group { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 14px; margin-bottom: 14px; }

@@ -1,12 +1,14 @@
 <template>
   <div class="dashboard-page">
     <div class="page-header">
-      <h1>Dashboard</h1>
+      <h1>📊 Dashboard</h1>
       <p>Selamat datang, {{ user?.name }}! Ini ringkasan aktivitas Albatros Makassar.</p>
     </div>
 
+    <!-- Kartu Statistik -->
     <DashboardStats />
-    
+
+    <!-- Grafik & Transaksi Terakhir -->
     <div class="chart-recent-grid">
       <DashboardChart />
       <RecentTransactions />
@@ -15,7 +17,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import DashboardStats from '@/components/dashboard/DashboardStats.vue'
 import DashboardChart from '@/components/dashboard/DashboardChart.vue'
 import RecentTransactions from '@/components/dashboard/RecentTransactions.vue'
@@ -45,6 +47,7 @@ const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
+  margin-top: 20px;
 }
 @media (min-width: 1024px) {
   .chart-recent-grid {

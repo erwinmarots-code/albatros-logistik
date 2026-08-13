@@ -5,59 +5,114 @@
       <p class="module-subtitle">Ringkasan pemasukan & pengeluaran</p>
     </div>
 
-    <!-- ===== TOOLBAR ===== -->
+    <!-- Toolbar dengan Filter Cepat -->
     <div class="toolbar">
-      <button @click="fetchTransactions" class="btn-refresh">
+      <div class="filter-group">
+        <button
+          v-for="(filter, key) in quickFilters"
+          :key="key"
+          :class="['btn-filter', { active: activeFilter === key }]"
+          @click="applyQuickFilter(key)"
+        >
+          <i :class="filter.icon"></i> {{ filter.label }}
+        </button>
+      </div>
+      <div class="filter-custom">
+        <label>Dari: <input v-model="filter.from" type="date" @change="applyCustomFilter" /></label>
+        <label>Sampai: <input v-model="filter.to" type="date" @change="applyCustomFilter" /></label>
+      </div>
+      <button @click="fetchData" class="btn-refresh">
         <i class="fas fa-sync-alt"></i> Muat Data
       </button>
       <button @click="exportExcel" class="btn-export">
         <i class="fas fa-file-excel"></i> Export Excel
       </button>
       <button @click="openForm()" class="btn-add">
-        <i class="fas fa-plus-circle"></i> Tambah Transaksi Manual
+        <i class="fas fa-plus-circle"></i> Tambah Transaksi
       </button>
     </div>
 
-    <!-- ===== FILTER PERIODE ===== -->
-    <div class="filter-row">
-      <label>Dari: <input v-model="filter.from" type="date" @change="fetchSummary" /></label>
-      <label>Sampai: <input v-model="filter.to" type="date" @change="fetchSummary" /></label>
-    </div>
-
-    <!-- ===== SUMMARY CARDS ===== -->
+    <!-- Summary Cards dengan Animasi Angka -->
     <div class="summary-cards">
       <div class="card income">
-        <h3><i class="fas fa-arrow-up"></i> Pemasukan</h3>
-        <p>{{ formatRupiah(summary.total_income) }}</p>
+        <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="card-content">
+          <h3>Pemasukan</h3>
+          <CountUp
+            v-if="summary.total_income !== undefined"
+            :start-val="0"
+            :end-val="summary.total_income || 0"
+            :duration="1.5"
+            :decimals="0"
+            :prefix="'Rp '"
+            :thousands-sep="'.'"
+            :decimal-sep="','"
+            class="card-value"
+          />
+          <small v-if="summary.income_change !== undefined" class="change positive">
+            <i class="fas fa-arrow-up"></i> {{ summary.income_change }}% dari bulan lalu
+          </small>
+        </div>
       </div>
       <div class="card expense">
-        <h3><i class="fas fa-arrow-down"></i> Pengeluaran</h3>
-        <p>{{ formatRupiah(summary.total_expense) }}</p>
+        <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="card-content">
+          <h3>Pengeluaran</h3>
+          <CountUp
+            v-if="summary.total_expense !== undefined"
+            :start-val="0"
+            :end-val="summary.total_expense || 0"
+            :duration="1.5"
+            :decimals="0"
+            :prefix="'Rp '"
+            :thousands-sep="'.'"
+            :decimal-sep="','"
+            class="card-value"
+          />
+          <small v-if="summary.expense_change !== undefined" class="change negative">
+            <i class="fas fa-arrow-down"></i> {{ summary.expense_change }}% dari bulan lalu
+          </small>
+        </div>
       </div>
       <div class="card balance">
-        <h3><i class="fas fa-wallet"></i> Saldo</h3>
-        <p :style="{ color: summary.balance >= 0 ? 'green' : 'red' }">
-          {{ formatRupiah(summary.balance) }}
-        </p>
+        <div class="card-icon"><i class="fas fa-wallet"></i></div>
+        <div class="card-content">
+          <h3>Saldo</h3>
+          <CountUp
+            v-if="summary.balance !== undefined"
+            :start-val="0"
+            :end-val="summary.balance || 0"
+            :duration="1.8"
+            :decimals="0"
+            :prefix="'Rp '"
+            :thousands-sep="'.'"
+            :decimal-sep="','"
+            class="card-value"
+            :style="{ color: summary.balance >= 0 ? '#22c55e' : '#ef4444' }"
+          />
+          <small class="change neutral">Periode terpilih</small>
+        </div>
       </div>
     </div>
 
-    <!-- ===== RINCIAN PER KATEGORI ===== -->
-    <div class="category-section">
-      <h3><i class="fas fa-tags"></i> Rincian per Kategori</h3>
-      <ul>
-        <li v-for="item in summary.by_category" :key="item.category">
-          <span>{{ item.category }}</span>
-          <span :class="item.type === 'income' ? 'income' : 'expense'">
-            {{ item.type === 'income' ? '+' : '-' }} {{ formatRupiah(item.total) }}
-          </span>
-        </li>
-      </ul>
+    <!-- Grafik Interaktif -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <h3>Pendapatan & Pengeluaran (6 Bulan Terakhir)</h3>
+        <div class="chart-legend">
+          <span><span class="dot income-dot"></span> Pemasukan</span>
+          <span><span class="dot expense-dot"></span> Pengeluaran</span>
+        </div>
+      </div>
+      <div class="chart-wrapper" v-if="!chartLoading">
+        <Bar :data="chartData" :options="chartOptions" />
+      </div>
+      <div v-else class="chart-loading">
+        <i class="fas fa-spinner fa-spin"></i> Memuat grafik...
+      </div>
     </div>
 
-    <hr />
-
-    <!-- ===== FORM TAMBAH TRANSAKSI ===== -->
+    <!-- Form Tambah/Edit Transaksi -->
     <div v-if="showForm" class="form-container">
       <h3><i class="fas fa-edit"></i> {{ editingTransId ? 'Edit Transaksi' : 'Tambah Transaksi Manual' }}</h3>
       <form @submit.prevent="saveTransaction">
@@ -106,8 +161,8 @@
       </form>
     </div>
 
-    <!-- ===== TABEL TRANSAKSI ===== -->
-    <div class="table-wrapper" v-if="transactions && transactions.length">
+    <!-- Tabel Transaksi dengan Search -->
+    <div class="table-wrapper" v-if="filteredTransactions.length">
       <table class="modern-table">
         <thead>
           <tr>
@@ -122,42 +177,70 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in transactions" :key="item.id">
+          <tr v-for="(item, index) in filteredTransactions" :key="item.id">
             <td>{{ index + 1 }}</td>
             <td>{{ item.transaction_date }}</td>
-            <td><span :class="'type-badge-' + item.type">{{ item.type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}</span></td>
+            <td>
+              <span :class="'type-badge-' + item.type">
+                {{ item.type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
+              </span>
+            </td>
             <td>{{ item.category }}</td>
             <td>{{ formatRupiah(item.amount) }}</td>
             <td>{{ item.description || '-' }}</td>
             <td>{{ item.vehicle?.plate_number || '-' }}</td>
             <td class="action-cell">
-              <button @click="editTransaction(item)" class="btn-edit" title="Edit"><i class="fas fa-edit"></i></button>
-              <button @click="deleteTransaction(item.id)" class="btn-delete" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+              <button @click="editTransaction(item)" class="btn-edit"><i class="fas fa-edit"></i></button>
+              <button @click="deleteTransaction(item.id)" class="btn-delete"><i class="fas fa-trash-alt"></i></button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p v-else class="empty-message"><i class="fas fa-inbox"></i> Belum ada transaksi keuangan.</p>
+    <p v-else class="empty-message">{{ searchQuery ? 'Tidak ada transaksi yang cocok dengan pencarian.' : 'Belum ada transaksi keuangan.' }}</p>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import axios from '../axios'
 import { formatRupiah } from '../utils/helpers'
+import { Bar } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+} from 'chart.js'
+import CountUp from 'vue-countup-v3'   
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
 // ===== STATE =====
 const transactions = ref([])
 const vehicles = ref([])
 const summary = ref({})
+const chartLoading = ref(true)
 const showForm = ref(false)
 const editingTransId = ref(null)
+const searchQuery = ref('')
 
 const filter = reactive({
   from: '',
   to: '',
 })
+
+const activeFilter = ref('month') // default bulan ini
+
+const quickFilters = {
+  today: { label: 'Hari Ini', icon: 'fas fa-calendar-day' },
+  week: { label: 'Minggu Ini', icon: 'fas fa-calendar-week' },
+  month: { label: 'Bulan Ini', icon: 'fas fa-calendar-alt' },
+  custom: { label: 'Kustom', icon: 'fas fa-calendar' },
+}
 
 const transForm = reactive({
   transaction_date: new Date().toISOString().split('T')[0],
@@ -168,12 +251,112 @@ const transForm = reactive({
   vehicle_id: '',
 })
 
-// ===== FUNGSI FETCH DATA =====
+// ===== CHART OPTIONS =====
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    tooltip: {
+      callbacks: {
+        label: (context) => {
+          let label = context.dataset.label || ''
+          let value = context.parsed.y
+          if (value >= 1000000) return label + ': Rp ' + (value / 1000000).toFixed(1) + ' JT'
+          if (value >= 1000) return label + ': Rp ' + (value / 1000).toFixed(1) + ' RB'
+          return label + ': Rp ' + value
+        }
+      }
+    },
+    legend: { display: false }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        callback: (value) => {
+          if (value >= 1000000) return 'Rp ' + (value / 1000000).toFixed(1) + 'JT'
+          if (value >= 1000) return 'Rp ' + (value / 1000).toFixed(1) + 'RB'
+          return 'Rp ' + value
+        },
+      },
+    },
+  },
+}
+
+const chartData = ref({
+  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+  datasets: [
+    {
+      label: 'Pemasukan',
+      backgroundColor: '#4f46e5',
+      borderRadius: 6,
+      data: [],
+    },
+    {
+      label: 'Pengeluaran',
+      backgroundColor: '#ef4444',
+      borderRadius: 6,
+      data: [],
+    },
+  ],
+})
+
+// ===== COMPUTED =====
+const filteredTransactions = computed(() => {
+  let data = transactions.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    data = data.filter(item =>
+      item.category?.toLowerCase().includes(q) ||
+      item.description?.toLowerCase().includes(q) ||
+      item.type?.toLowerCase().includes(q) ||
+      item.vehicle?.plate_number?.toLowerCase().includes(q)
+    )
+  }
+  return data
+})
+
+// ===== FUNGSI FILTER =====
+const applyQuickFilter = (key) => {
+  activeFilter.value = key
+  const now = new Date()
+  let from, to
+  switch (key) {
+    case 'today':
+      from = new Date(now)
+      to = new Date(now)
+      break
+    case 'week':
+      const day = now.getDay()
+      from = new Date(now)
+      from.setDate(now.getDate() - day)
+      to = new Date(now)
+      to.setDate(now.getDate() + (6 - day))
+      break
+    case 'month':
+      from = new Date(now.getFullYear(), now.getMonth(), 1)
+      to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      break
+    default:
+      return
+  }
+  filter.from = from.toISOString().split('T')[0]
+  filter.to = to.toISOString().split('T')[0]
+  fetchSummary()
+}
+
+const applyCustomFilter = () => {
+  activeFilter.value = 'custom'
+  fetchSummary()
+}
+
+// ===== FETCH DATA =====
 const fetchTransactions = async () => {
   try {
     const res = await axios.get('/financial-transactions')
     transactions.value = res.data.data || []
   } catch (error) {
+    console.error('Gagal memuat transaksi:', error)
     alert('Gagal memuat transaksi: ' + error.message)
   }
 }
@@ -186,6 +369,7 @@ const fetchSummary = async () => {
     const res = await axios.get('/financial-summary', { params })
     summary.value = res.data || {}
   } catch (error) {
+    console.error('Gagal memuat summary:', error)
     alert('Gagal memuat summary: ' + error.message)
   }
 }
@@ -195,11 +379,36 @@ const fetchVehicles = async () => {
     const res = await axios.get('/vehicles')
     vehicles.value = res.data.data || []
   } catch (error) {
+    console.error('Gagal memuat kendaraan:', error)
     alert('Gagal memuat kendaraan: ' + error.message)
   }
 }
 
-// ===== FORM =====
+const fetchChart = async () => {
+  chartLoading.value = true
+  try {
+    const res = await axios.get('/dashboard/chart')
+    chartData.value = {
+      labels: res.data.labels,
+      datasets: [
+        { ...chartData.value.datasets[0], data: res.data.income },
+        { ...chartData.value.datasets[1], data: res.data.expense },
+      ],
+    }
+  } catch (error) {
+    console.error('Gagal memuat grafik:', error)
+  } finally {
+    chartLoading.value = false
+  }
+}
+
+const fetchData = () => {
+  fetchTransactions()
+  fetchSummary()
+  fetchChart()
+}
+
+// ===== CRUD TRANSAKSI =====
 const openForm = (mode = 'add', data = null) => {
   showForm.value = true
   if (mode === 'add') {
@@ -274,128 +483,187 @@ const exportExcel = async () => {
   }
 }
 
+// ===== WATCH FILTER =====
+watch(() => [filter.from, filter.to], () => {
+  if (activeFilter.value !== 'custom') return
+  fetchSummary()
+})
+
 // ===== MOUNTED =====
 onMounted(() => {
-  fetchTransactions()
-  fetchSummary()
+  // Set default filter: bulan ini
+  const now = new Date()
+  const from = new Date(now.getFullYear(), now.getMonth(), 1)
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  filter.from = from.toISOString().split('T')[0]
+  filter.to = to.toISOString().split('T')[0]
+  activeFilter.value = 'month'
+  fetchData()
   fetchVehicles()
 })
 </script>
 
 <style scoped>
-/* ====== GAYA MODUL ====== */
+/* ====== GAYA MODERN ====== */
 .module-container { max-width: 1200px; margin: 0 auto; }
-.module-header { margin-bottom: 20px; }
-.module-header h2 { font-size: 24px; color: #0d2b45; display: flex; align-items: center; gap: 10px; }
+.module-header { margin-bottom: 24px; }
+.module-header h2 { font-size: 28px; color: #0d2b45; display: flex; align-items: center; gap: 12px; }
 .module-header h2 i { color: #1a4a7a; }
 .module-subtitle { color: #6c757d; font-size: 14px; margin-top: 2px; }
 
-/* ===== TOOLBAR ===== */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  align-items: center;
 }
-.btn-add, .btn-refresh, .btn-export {
-  padding: 10px 22px;
+.filter-group {
+  display: flex;
+  gap: 4px;
+  background: #f1f3f5;
+  padding: 4px;
+  border-radius: 30px;
+}
+.btn-filter {
+  padding: 6px 16px;
   border: none;
-  border-radius: 10px;
+  border-radius: 30px;
+  background: transparent;
+  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s;
+  color: #495057;
+}
+.btn-filter:hover { background: rgba(0,0,0,0.05); }
+.btn-filter.active {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  color: #0d2b45;
+}
+.btn-filter i { margin-right: 4px; }
+
+.filter-custom {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.filter-custom label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.filter-custom input {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.btn-add, .btn-refresh, .btn-export {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 30px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.25s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
 }
-.btn-add { background: linear-gradient(135deg, #28a745, #218838); color: white; }
-.btn-add:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40,167,69,0.3); }
-.btn-refresh { background: linear-gradient(135deg, #17a2b8, #138496); color: white; }
-.btn-refresh:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(23,162,184,0.3); }
-.btn-export { background: linear-gradient(135deg, #007bff, #0069d9); color: white; }
-.btn-export:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,123,255,0.3); }
-
-/* ===== FILTER ===== */
-.filter-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.filter-row label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-.filter-row input {
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
+.btn-add { background: #28a745; color: white; }
+.btn-add:hover { background: #218838; transform: translateY(-1px); }
+.btn-refresh { background: #17a2b8; color: white; }
+.btn-refresh:hover { background: #138496; transform: translateY(-1px); }
+.btn-export { background: #007bff; color: white; }
+.btn-export:hover { background: #0069d9; transform: translateY(-1px); }
 
 /* ===== SUMMARY CARDS ===== */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 .card {
   background: white;
-  padding: 16px 20px;
   border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-  border-left: 4px solid #1a4a7a;
-}
-.card.income { border-left-color: #28a745; }
-.card.expense { border-left-color: #dc3545; }
-.card.balance { border-left-color: #17a2b8; }
-.card h3 {
-  font-size: 14px;
-  color: #6c757d;
-  margin-bottom: 6px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
-.card p {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0;
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
 }
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.card.income .card-icon { background: #e6f7e6; color: #28a745; }
+.card.expense .card-icon { background: #fde8e8; color: #dc3545; }
+.card.balance .card-icon { background: #e6f2ff; color: #1a4a7a; }
 
-/* ===== KATEGORI ===== */
-.category-section {
-  background: #f8fafc;
+.card-content { flex: 1; }
+.card-content h3 { font-size: 13px; color: #6c757d; margin: 0 0 4px 0; font-weight: 500; }
+.card-value { font-size: 22px; font-weight: 700; color: #0d2b45; }
+.card .change { font-size: 12px; font-weight: 600; margin-left: 4px; }
+.change.positive { color: #28a745; }
+.change.negative { color: #dc3545; }
+.change.neutral { color: #6c757d; }
+
+/* ===== CHART ===== */
+.chart-section {
+  background: white;
   border-radius: 16px;
-  padding: 16px 20px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   margin-bottom: 24px;
 }
-.category-section h3 {
-  font-size: 16px;
-  color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.category-section ul {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 8px;
-}
-.category-section li {
+.chart-header {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
-  border-bottom: 1px solid #e9ecef;
+  align-items: center;
+  margin-bottom: 16px;
 }
-.category-section li span:last-child.income { color: #28a745; }
-.category-section li span:last-child.expense { color: #dc3545; }
+.chart-header h3 { font-size: 16px; font-weight: 600; color: #0d2b45; margin: 0; }
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #6c757d;
+}
+.chart-legend .dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+.dot.income-dot { background: #4f46e5; }
+.dot.expense-dot { background: #ef4444; }
+.chart-wrapper { height: 280px; position: relative; }
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 280px;
+  color: #6c757d;
+}
+.chart-loading i { margin-right: 8px; }
 
 /* ===== FORM ===== */
 .form-container {
@@ -468,7 +736,7 @@ onMounted(() => {
   gap: 8px;
   transition: all 0.2s;
 }
-.btn-save { background: linear-gradient(135deg, #28a745, #218838); color: white; }
+.btn-save { background: #28a745; color: white; }
 .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40,167,69,0.3); }
 .btn-cancel { background: #6c757d; color: white; }
 .btn-cancel:hover { background: #5a6268; transform: translateY(-2px); }
@@ -482,52 +750,16 @@ onMounted(() => {
   padding: 4px 0;
   margin-top: 16px;
 }
-.modern-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 700px;
-}
-.modern-table thead {
-  background: #f8fafc;
-  border-bottom: 2px solid #e9ecef;
-}
-.modern-table thead th {
-  padding: 14px 16px;
-  text-align: left;
-  font-weight: 700;
-  color: #2d3748;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.modern-table thead th i {
-  margin-right: 6px;
-  color: #1a4a7a;
-}
-.modern-table tbody tr {
-  border-bottom: 1px solid #f1f3f5;
-  transition: background 0.15s ease;
-}
+.modern-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 700px; }
+.modern-table thead { background: #f8fafc; border-bottom: 2px solid #e9ecef; }
+.modern-table thead th { padding: 14px 16px; text-align: left; font-weight: 700; color: #2d3748; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+.modern-table thead th i { margin-right: 6px; color: #1a4a7a; }
+.modern-table tbody tr { border-bottom: 1px solid #f1f3f5; transition: background 0.15s ease; }
 .modern-table tbody tr:hover { background: #f8fafc; }
-.modern-table tbody td {
-  padding: 12px 16px;
-  color: #2d3748;
-  vertical-align: middle;
-}
-.modern-table tbody td:first-child {
-  font-weight: 600;
-  color: #6c757d;
-  width: 40px;
-  text-align: center;
-}
+.modern-table tbody td { padding: 12px 16px; color: #2d3748; vertical-align: middle; }
+.modern-table tbody td:first-child { font-weight: 600; color: #6c757d; width: 40px; text-align: center; }
 .text-center { text-align: center; }
-.action-cell {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
+.action-cell { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 .type-badge-income {
   background: #28a745;
@@ -571,32 +803,13 @@ onMounted(() => {
   background: #f8f9fa;
   border-radius: 16px;
 }
-.empty-message i {
-  font-size: 40px;
-  display: block;
-  margin-bottom: 12px;
-  color: #dee2e6;
-}
+.empty-message i { font-size: 40px; display: block; margin-bottom: 12px; color: #dee2e6; }
 
 @media (max-width: 768px) {
-  .form-group {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .form-group label {
-    text-align: left;
-    justify-content: flex-start;
-  }
-  .modern-table {
-    font-size: 13px;
-    min-width: 500px;
-  }
-  .modern-table thead th,
-  .modern-table tbody td {
-    padding: 10px 12px;
-  }
-  .action-cell {
-    gap: 4px;
-  }
+  .form-group { grid-template-columns: 1fr; gap: 4px; }
+  .form-group label { text-align: left; justify-content: flex-start; }
+  .modern-table { font-size: 13px; min-width: 500px; }
+  .modern-table thead th, .modern-table tbody td { padding: 10px 12px; }
+  .action-cell { gap: 4px; }
 }
 </style>

@@ -1,24 +1,54 @@
 <template>
   <div id="app">
-    <!-- ===== HEADER ===== -->
-    <header class="app-header">
-      <div class="header-content">
-        <h1><i class="fas fa-ship"></i> Albatros Makassar</h1>
-        <p class="subtitle">Sistem Manajemen Logistik</p>
-      </div>
-      <div class="header-right">
-        <span v-if="isLoggedIn" class="user-info">
-          <i class="fas fa-user-circle"></i> {{ user?.name || 'User' }}
-          <span class="role-badge">{{ roleLabel }}</span>
-          <button @click="logout" class="btn-logout">
-            <i class="fas fa-sign-out-alt"></i> Logout
-          </button>
-        </span>
-        <button v-else @click="showLogin = true" class="btn-login">
-          <i class="fas fa-sign-in-alt"></i> Login
+    <!-- ===== LANDING PAGE (JIKA BELUM LOGIN) ===== -->
+    <LandingPage v-if="!isLoggedIn" @login-click="showLogin = true" />
+
+    <!-- ===== TAMPILAN UTAMA (JIKA SUDAH LOGIN) ===== -->
+    <template v-else>
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-content">
+          <h1><i class="fas fa-ship"></i> Albatros Makassar</h1>
+          <p class="subtitle">Sistem Manajemen Logistik</p>
+        </div>
+        <div class="header-right">
+          <span class="user-info">
+            <i class="fas fa-user-circle"></i> {{ user?.name || 'User' }}
+            <span class="role-badge">{{ roleLabel }}</span>
+            <button @click="logout" class="btn-logout">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </span>
+        </div>
+      </header>
+
+      <!-- Navigasi -->
+      <nav class="app-nav" v-if="isLoggedIn">
+        <button
+          v-for="tab in accessibleTabs"
+          :key="tab.key"
+          :class="['nav-btn', { active: currentPage === tab.key }]"
+          @click="navigateTo(tab.key)"
+        >
+          <i :class="tab.icon"></i> {{ tab.label }}
         </button>
-      </div>
-    </header>
+      </nav>
+
+      <!-- Konten -->
+      <main class="app-content">
+        <Dashboard v-if="currentPage === 'dashboard'" />
+        <VehicleList v-if="currentPage === 'vehicles'" />
+        <DriverList v-if="currentPage === 'drivers'" />
+        <ClientList v-if="currentPage === 'clients'" />
+        <MaintenanceRequestList v-if="currentPage === 'requests'" />
+        <HistoryMaintenanceList v-if="currentPage === 'history'" />
+        <ShippingProjectList v-if="currentPage === 'projects'" />
+        <DeliveryTaskList v-if="currentPage === 'delivery-tasks'" />
+        <FuelExpenseList v-if="currentPage === 'fuel-expenses'" />
+        <FinancialDashboard v-if="currentPage === 'financial'" />
+        <InvoiceList v-if="currentPage === 'invoices'" />
+      </main>
+    </template>
 
     <!-- ===== MODAL LOGIN ===== -->
     <div v-if="showLogin" class="modal-overlay" @click.self="showLogin = false">
@@ -44,45 +74,14 @@
         </form>
       </div>
     </div>
-
-    <!-- ===== NAVIGASI ===== -->
-    <nav class="app-nav" v-if="isLoggedIn">
-      <button
-        v-for="tab in accessibleTabs"
-        :key="tab.key"
-        :class="['nav-btn', { active: currentPage === tab.key }]"
-        @click="navigateTo(tab.key)"
-      >
-        <i :class="tab.icon"></i> {{ tab.label }}
-      </button>
-    </nav>
-
-    <!-- ===== KONTEN ===== -->
-    <main class="app-content">
-      <div v-if="isLoggedIn">
-        <VehicleList v-if="currentPage === 'vehicles'" />
-        <DriverList v-if="currentPage === 'drivers'" />
-        <ClientList v-if="currentPage === 'clients'" />
-        <HistoryMaintenanceList v-if="currentPage === 'history'" />
-        <MaintenanceRequestList v-if="currentPage === 'requests'" />
-        <ShippingProjectList v-if="currentPage === 'projects'" />
-        <DeliveryTaskList v-if="currentPage === 'delivery-tasks'" />
-        <FuelExpenseList v-if="currentPage === 'fuel-expenses'" />
-        <FinancialDashboard v-if="currentPage === 'financial'" />
-        <InvoiceList v-if="currentPage === 'invoices'" />
-      </div>
-      <div v-else class="login-prompt">
-        <h2>Selamat Datang di Albatros Makassar</h2>
-        <p>Silakan login untuk mengakses sistem.</p>
-        <button @click="showLogin = true" class="btn-login-large">Login</button>
-      </div>
-    </main>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from './axios'   // <-- IMPORT DARI FILE KUSTOM AXIOS (baseURL sudah '/api')
+import axios from './axios'
+import LandingPage from './views/LandingPage.vue'
+import Dashboard from './views/Dashboard.vue'
 import VehicleList from './components/VehicleList.vue'
 import DriverList from './components/DriverList.vue'
 import ClientList from './components/ClientList.vue'
@@ -101,31 +100,45 @@ const token = ref(null)
 const loading = ref(false)
 const loginError = ref('')
 const showLogin = ref(false)
-const currentPage = ref('vehicles')
+const currentPage = ref('dashboard')
 
 const loginForm = ref({
   email: '',
   password: '',
 })
 
-// ===== DAFTAR MENU & ROLE =====
+// ===== DAFTAR MENU & ROLE (DETAIL SESUAI PERMINTAAN) =====
 const allTabs = [
-  { key: 'vehicles', label: 'Kendaraan', icon: 'fas fa-car', roles: ['admin_transport', 'super_admin'] },
-  { key: 'drivers', label: 'Driver', icon: 'fas fa-user-tie', roles: ['admin_transport', 'super_admin'] },
-  { key: 'clients', label: 'Client', icon: 'fas fa-building', roles: ['admin_po', 'super_admin'] },
-  { key: 'history', label: 'History Perawatan', icon: 'fas fa-history', roles: ['admin_transport', 'admin_finance', 'super_admin'] },
-  { key: 'requests', label: 'Pengajuan Perawatan', icon: 'fas fa-tools', roles: ['admin_transport', 'admin_finance', 'super_admin'] },
-  { key: 'projects', label: 'Project', icon: 'fas fa-folder-open', roles: ['admin_po', 'super_admin'] },
+  // Dashboard untuk semua
+  { key: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-pie', roles: ['admin_po', 'admin_transport', 'admin_finance', 'super_admin'] },
+
+  // === ADMIN PO ===
+  { key: 'projects', label: 'Project', icon: 'fas fa-folder-open', roles: ['admin_po', 'admin_transport', 'super_admin'] },
   { key: 'delivery-tasks', label: 'Tugas', icon: 'fas fa-tasks', roles: ['admin_po', 'admin_transport', 'super_admin'] },
-  { key: 'fuel-expenses', label: 'Biaya', icon: 'fas fa-coins', roles: ['admin_po', 'admin_transport', 'admin_finance', 'super_admin'] },
+  { key: 'vehicles', label: 'Kendaraan', icon: 'fas fa-car', roles: ['admin_po', 'admin_transport', 'super_admin'] },
+  { key: 'drivers', label: 'Driver', icon: 'fas fa-user-tie', roles: ['admin_po', 'admin_transport', 'super_admin'] },
+  { key: 'history', label: 'Histori Perawatan', icon: 'fas fa-history', roles: ['admin_po', 'admin_transport', 'admin_finance', 'super_admin'] },
+
+  // === ADMIN TRANSPORT (tambahan) ===
+  { key: 'fuel-expenses', label: 'Biaya', icon: 'fas fa-coins', roles: ['admin_transport', 'admin_finance', 'super_admin'] },
+  { key: 'requests', label: 'Pengajuan Perawatan', icon: 'fas fa-tools', roles: ['admin_transport', 'admin_finance', 'super_admin'] },
+
+  // === ADMIN FINANCE (khusus) ===
   { key: 'financial', label: 'Keuangan', icon: 'fas fa-chart-pie', roles: ['admin_finance', 'super_admin'] },
   { key: 'invoices', label: 'Invoice', icon: 'fas fa-file-invoice', roles: ['admin_finance', 'super_admin'] },
+
+  // === SUPER ADMIN (tambahan) ===
+  { key: 'clients', label: 'Client', icon: 'fas fa-building', roles: ['super_admin'] },
 ]
 
 // ===== COMPUTED =====
 const accessibleTabs = computed(() => {
   if (!isLoggedIn.value || !user.value) return []
-  return allTabs.filter(tab => tab.roles.includes(user.value.role))
+  const role = user.value.role
+  console.log('User role:', role)
+  const filtered = allTabs.filter(tab => tab.roles.includes(role))
+  console.log('Filtered tabs:', filtered.map(t => t.label))
+  return filtered
 })
 
 const roleLabel = computed(() => {
@@ -148,7 +161,7 @@ const login = async () => {
   loading.value = true
   loginError.value = ''
   try {
-    const res = await axios.post('/login', loginForm.value)   // TANPA PREFIX /api
+    const res = await axios.post('/login', loginForm.value)
     token.value = res.data.token
     user.value = res.data.user
     isLoggedIn.value = true
@@ -176,7 +189,7 @@ const logout = async () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   delete axios.defaults.headers.common['Authorization']
-  currentPage.value = 'vehicles'
+  currentPage.value = 'dashboard'
 }
 
 // ===== MOUNTED =====
@@ -195,7 +208,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ===== LOCAL STYLE ===== */
+/* ====== GAYA APP ====== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 #app {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -224,8 +237,6 @@ onMounted(() => {
 .role-badge { background: #ffd700; color: #0d2b45; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
 .btn-logout { background: #dc3545; color: white; border: none; border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
 .btn-logout:hover { background: #c82333; }
-.btn-login { background: #28a745; color: white; border: none; border-radius: 8px; padding: 8px 20px; cursor: pointer; font-weight: 600; }
-.btn-login:hover { background: #218838; }
 
 .modal-overlay {
   position: fixed;
@@ -282,20 +293,6 @@ onMounted(() => {
   box-shadow: 0 4px 20px rgba(0,0,0,0.04);
   min-height: 300px;
 }
-.login-prompt { text-align: center; padding: 60px 20px; }
-.login-prompt h2 { color: #0d2b45; margin-bottom: 12px; }
-.btn-login-large {
-  margin-top: 20px;
-  background: #1a4a7a;
-  color: white;
-  border: none;
-  padding: 12px 40px;
-  border-radius: 30px;
-  font-weight: 600;
-  font-size: 18px;
-  cursor: pointer;
-}
-.btn-login-large:hover { background: #0d2b45; }
 
 @media (max-width: 768px) {
   .app-header { flex-direction: column; align-items: stretch; gap: 12px; }
@@ -306,8 +303,8 @@ onMounted(() => {
 }
 </style>
 
-<!-- ===== GLOBAL CSS UNTUK TABEL & KOMPONEN ===== -->
 <style>
+/* ====== GLOBAL STYLE ====== */
 .table-wrapper {
   overflow-x: auto;
   background: white;
@@ -342,7 +339,6 @@ onMounted(() => {
 .modern-table tbody td:first-child { font-weight: 600; color: #6c757d; width: 40px; text-align: center; }
 .text-center { text-align: center; }
 .action-cell { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-
 .btn-edit, .btn-delete, .btn-approve, .btn-reject, .btn-detail {
   border: none;
   border-radius: 8px;

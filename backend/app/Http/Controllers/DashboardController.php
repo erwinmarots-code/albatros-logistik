@@ -4,66 +4,91 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Models\Driver;
-use App\Models\Client;
+use App\Models\ShippingProject;
+use App\Models\DeliveryTask;
 use App\Models\FinancialTransaction;
-use App\Models\MaintenanceRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function stats()
     {
-        // Total data
-        $totalVehicles = Vehicle::count();
-        $totalDrivers = Driver::count();
-        $totalClients = Client::count();
+        try {
+            $totalVehicles = Vehicle::count();
+            $totalDrivers = Driver::count();
+            $totalProjects = ShippingProject::count();
+            $totalTasks = DeliveryTask::count();
+            $completedProjects = ShippingProject::where('status', 'completed')->count();
 
-        // Keuangan (bulan ini)
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth = now()->endOfMonth();
+            $monthlyIncome = FinancialTransaction::where('type', 'income')
+                ->whereMonth('transaction_date', now()->month)
+                ->whereYear('transaction_date', now()->year)
+                ->sum('amount');
 
-        $income = FinancialTransaction::where('type', 'income')
-            ->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
-
-        $expense = FinancialTransaction::where('type', 'expense')
-            ->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
-
-        // Grafik pengajuan per bulan (6 bulan terakhir)
-        $maintenanceRequests = MaintenanceRequest::select(
-            DB::raw('YEAR(created_at) as year'),
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('COUNT(*) as total')
-        )
-        ->where('created_at', '>=', now()->subMonths(6))
-        ->groupBy('year', 'month')
-        ->orderBy('year')
-        ->orderBy('month')
-        ->get();
-
-        $chartData = [];
-        foreach ($maintenanceRequests as $item) {
-            $monthName = date('M Y', mktime(0,0,0, $item->month, 1, $item->year));
-            $chartData[] = [
-                'month' => $monthName,
-                'total' => $item->total,
-            ];
+            return response()->json([
+                'total_vehicles' => $totalVehicles,
+                'total_drivers'  => $totalDrivers,
+                'total_projects' => $totalProjects,
+                'total_tasks'    => $totalTasks,
+                'completed_projects' => $completedProjects,
+                'monthly_income' => $monthlyIncome,
+                'income_change'  => 0,
+                'expense_change' => 0,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching stats: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        // Pengajuan perawatan pending
-        $pendingRequests = MaintenanceRequest::where('status', 'pending')->count();
+    public function chart()
+    {
+        try {
+            $months = collect(range(5, 0))->map(function ($i) {
+                return now()->subMonths($i)->format('M');
+            });
 
-        return response()->json([
-            'total_vehicles' => $totalVehicles,
-            'total_drivers' => $totalDrivers,
-            'total_clients' => $totalClients,
-            'income' => $income,
-            'expense' => $expense,
-            'balance' => $income - $expense,
-            'pending_requests' => $pendingRequests,
-            'chart_data' => $chartData,
-        ]);
+            $income = collect(range(5, 0))->map(function ($i) {
+                $date = now()->subMonths($i);
+                return FinancialTransaction::where('type', 'income')
+                    ->whereMonth('transaction_date', $date->month)
+                    ->whereYear('transaction_date', $date->year)
+                    ->sum('amount');
+            });
+
+            $expense = collect(range(5, 0))->map(function ($i) {
+                $date = now()->subMonths($i);
+                return FinancialTransaction::where('type', 'expense')
+                    ->whereMonth('transaction_date', $date->month)
+                    ->whereYear('transaction_date', $date->year)
+                    ->sum('amount');
+            });
+
+            return response()->json([
+                'labels' => $months,
+                'income' => $income,
+                'expense' => $expense,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching chart data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function recentTransactions()
+    {
+        try {
+            $transactions = FinancialTransaction::with(['vehicle', 'client'])
+                ->orderBy('transaction_date', 'desc')
+                ->limit(5)
+                ->get();
+            return response()->json(['data' => $transactions]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching recent transactions: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\DeliveryTaskController;
 use App\Http\Controllers\FuelExpenseController;
 use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\DashboardController;
 use App\Exports\VehiclesExport;
 use App\Exports\DriversExport;
 use App\Exports\ClientsExport;
@@ -40,16 +41,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
 
     // =============================================
-    // 1. MASTER DATA
+    // DASHBOARD
+    // =============================================
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('/dashboard/chart', [DashboardController::class, 'chart']);
+    Route::get('/dashboard/recent-transactions', [DashboardController::class, 'recentTransactions']);
+
+    // =============================================
+    // MASTER DATA
     // =============================================
     Route::apiResource('vehicles', VehicleController::class);
     Route::apiResource('drivers', DriverController::class);
     Route::apiResource('clients', ClientController::class);
 
     // =============================================
-    // 2. MAINTENANCE (Jadwal Service & Pengajuan Perawatan)
+    // MAINTENANCE SCHEDULES
     // =============================================
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
+
+    // =============================================
+    // MAINTENANCE REQUESTS (Pengajuan Perawatan)
+    // =============================================
     Route::apiResource('maintenance-requests', MaintenanceRequestController::class);
 
     // Approve/Reject/Execute (khusus Admin Finance & Super Admin)
@@ -61,18 +73,18 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:admin_finance,super_admin');
 
     // =============================================
-    // 3. SHIPPING PROJECT
+    // SHIPPING PROJECT
     // =============================================
     Route::apiResource('shipping-projects', ShippingProjectController::class);
 
     // =============================================
-    // 4. DELIVERY TASK
+    // DELIVERY TASK
     // =============================================
     Route::apiResource('delivery-tasks', DeliveryTaskController::class);
     Route::patch('delivery-tasks/{id}/status', [DeliveryTaskController::class, 'updateStatus']);
 
     // =============================================
-    // 5. FUEL EXPENSE (Pengajuan Biaya Operasional)
+    // FUEL EXPENSE (Pengajuan Biaya Operasional)
     // =============================================
     Route::apiResource('fuel-expenses', FuelExpenseController::class);
     Route::post('fuel-expenses/{id}/approve', [FuelExpenseController::class, 'approve'])
@@ -81,7 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:admin_finance,super_admin');
 
     // =============================================
-    // 6. FINANCIAL (Keuangan)
+    // FINANCIAL
     // =============================================
     Route::apiResource('financial-transactions', FinancialTransactionController::class)
         ->middleware('role:admin_finance,super_admin');
@@ -89,7 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:admin_finance,super_admin');
 
     // =============================================
-    // 7. INVOICE (Tagihan)
+    // INVOICE
     // =============================================
     Route::apiResource('invoices', InvoiceController::class)
         ->middleware('role:admin_finance,super_admin');
@@ -99,7 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:admin_finance,super_admin');
 
     // =============================================
-    // 8. EXPORT EXCEL
+    // EXPORT EXCEL
     // =============================================
     Route::get('/export/vehicles', function () {
         return Excel::download(new VehiclesExport, 'kendaraan.xlsx');
@@ -117,7 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // =============================================
-    // 9. ROUTE KHUSUS SUPER ADMIN (contoh)
+    // ROUTE KHUSUS SUPER ADMIN
     // =============================================
     Route::get('/admin-only', function () {
         return response()->json(['message' => 'Hanya untuk Super Admin']);
