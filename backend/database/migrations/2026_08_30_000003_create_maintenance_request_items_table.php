@@ -8,14 +8,15 @@ return new class extends Migration
 {
     public function up()
     {
-        if (!Schema::hasTable('spare_part_movements')) {
-            Schema::create('spare_part_movements', function (Blueprint $table) {
+        if (!Schema::hasTable('maintenance_request_items')) {
+            Schema::create('maintenance_request_items', function (Blueprint $table) {
                 $table->id();
+                $table->foreignId('maintenance_request_id')->constrained()->onDelete('cascade');
                 $table->foreignId('spare_part_id')->constrained();
-                $table->enum('movement_type', ['masuk', 'keluar', 'rusak', 'koreksi']);
                 $table->integer('quantity');
+                $table->integer('odometer_before')->nullable();
+                $table->integer('odometer_after')->nullable();
                 $table->text('notes')->nullable();
-                $table->foreignId('created_by')->constrained('users');
                 $table->timestamps();
             });
         }
@@ -23,6 +24,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('spare_part_movements');
+        Schema::dropIfExists('maintenance_request_items');
     }
 };

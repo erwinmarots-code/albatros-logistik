@@ -14,15 +14,15 @@ return new class extends Migration
                 $table->string('code')->unique();
                 $table->string('name');
                 $table->enum('category', ['sekali_pakai', 'berulang'])->default('sekali_pakai');
-                $table->string('unit')->default('pcs');
+                $table->string('unit')->nullable();
                 $table->integer('stock')->default(0);
                 $table->integer('min_stock')->default(0);
-                $table->decimal('price', 15, 2)->default(0);
+                $table->decimal('price', 15, 2)->nullable();
                 $table->integer('lifespan_km')->nullable();
                 $table->integer('lifespan_months')->nullable();
                 $table->enum('status', ['tersedia', 'sedang_dipakai', 'stok_habis', 'perlu_restok', 'rusak_tidak_layak'])->default('tersedia');
-                $table->foreignId('branch_id')->constrained()->onDelete('cascade');
-                $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+                $table->foreignId('created_by')->constrained('users');
+                $table->foreignId('branch_id')->constrained();
                 $table->timestamps();
             });
         }

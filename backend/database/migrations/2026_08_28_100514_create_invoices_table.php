@@ -8,18 +8,19 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('invoices', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('shipping_project_id')->constrained('shipping_projects')->cascadeOnDelete();
-            $table->string('invoice_number')->unique();
-            $table->date('invoice_date');
-            $table->date('due_date')->nullable();
-            $table->decimal('total_amount', 15, 2);
-            $table->enum('status', ['draft', 'sent', 'paid', 'cancelled'])->default('draft');
-            $table->text('notes')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('invoices')) {
+            Schema::create('invoices', function (Blueprint $table) {
+                $table->id();
+                $table->string('invoice_number')->unique();
+                $table->foreignId('client_id')->constrained();
+                $table->foreignId('shipping_project_id')->constrained();
+                $table->decimal('total_amount', 15, 2);
+                $table->date('due_date');
+                $table->enum('status', ['draft', 'sent', 'paid', 'cancelled'])->default('draft');
+                $table->foreignId('branch_id')->constrained();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down()

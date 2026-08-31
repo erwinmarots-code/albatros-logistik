@@ -8,24 +8,25 @@ return new class extends Migration
 {
     public function up()
     {
-        // Tabel permissions (daftar menu/akses)
-        Schema::create('permissions', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique(); // e.g. 'dashboard', 'clients', 'projects'
-            $table->string('label')->nullable(); // Label untuk tampilan, e.g. 'Dashboard', 'Client'
-            $table->string('group')->nullable(); // Kelompok menu, e.g. 'Data Master', 'Operasional'
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('permissions')) {
+            Schema::create('permissions', function (Blueprint $table) {
+                $table->id();
+                $table->string('name')->unique();
+                $table->string('label')->nullable();
+                $table->string('group')->nullable();
+                $table->timestamps();
+            });
+        }
 
-        // Tabel role_permission (hubungan role dengan permission)
-        Schema::create('role_permission', function (Blueprint $table) {
-            $table->id();
-            $table->string('role'); // nama role, sesuai dengan nilai di kolom 'role' user
-            $table->foreignId('permission_id')->constrained()->onDelete('cascade');
-            $table->timestamps();
-
-            $table->unique(['role', 'permission_id']);
-        });
+        if (!Schema::hasTable('role_permission')) {
+            Schema::create('role_permission', function (Blueprint $table) {
+                $table->id();
+                $table->string('role');
+                $table->foreignId('permission_id')->constrained()->onDelete('cascade');
+                $table->timestamps();
+                $table->unique(['role', 'permission_id']);
+            });
+        }
     }
 
     public function down()

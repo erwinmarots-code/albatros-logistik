@@ -8,18 +8,28 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('delivery_tasks', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('project_id')->constrained('shipping_projects')->cascadeOnDelete();
-            $table->foreignId('client_id')->constrained('clients')->cascadeOnDelete();
-            $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
-            $table->foreignId('driver_id')->constrained('drivers')->cascadeOnDelete();
-            $table->date('tanggal');
-            $table->enum('status', ['pending', 'on_delivery', 'completed', 'failed'])->default('pending');
-            $table->text('catatan')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('delivery_tasks')) {
+            Schema::create('delivery_tasks', function (Blueprint $table) {
+                $table->id();
+                $table->string('no_resi')->unique();
+                $table->foreignId('project_id')->constrained('shipping_projects');
+                $table->foreignId('vehicle_id')->constrained();
+                $table->foreignId('driver_id')->constrained();
+                $table->foreignId('client_id')->constrained();
+                $table->date('tanggal');
+                $table->enum('status', ['draft', 'assigned', 'in_progress', 'completed', 'cancelled'])->default('draft');
+                $table->text('notes')->nullable();
+                $table->string('receiver_name')->nullable();
+                $table->text('receiver_address')->nullable();
+                $table->string('receiver_phone')->nullable();
+                $table->text('goods_description')->nullable();
+                $table->decimal('weight_kg', 10, 2)->nullable();
+                $table->integer('collie')->nullable();
+                $table->foreignId('created_by')->constrained('users');
+                $table->foreignId('branch_id')->constrained();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down()
