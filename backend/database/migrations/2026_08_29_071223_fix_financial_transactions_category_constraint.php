@@ -9,54 +9,43 @@ return new class extends Migration
 {
     public function up()
     {
-        // Karena SQLite tidak bisa drop constraint, kita rename tabel, buat baru, copy data
-        Schema::rename('financial_transactions', 'financial_transactions_old');
+        // Cek constraint yang sudah ada
+        $existingConstraints = DB::select("
+            SELECT CONSTRAINT_NAME 
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+            WHERE TABLE_NAME = 'financial_transactions' 
+            AND CONSTRAINT_SCHEMA = DATABASE()
+        ");
+        $existingNames = array_column($existingConstraints, 'CONSTRAINT_NAME');
 
-        Schema::create('financial_transactions', function (Blueprint $table) {
-            $table->id();
-            $table->date('transaction_date');
-            $table->enum('type', ['income', 'expense']);
-            $table->string('category', 255);  // tanpa CHECK constraint
-            $table->decimal('amount', 15, 2);
-            $table->text('description')->nullable();
-            $table->foreignId('vehicle_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('driver_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('client_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('status')->default('confirmed');
-            $table->string('po_number')->nullable();
-            $table->string('maintenance_number')->nullable();
-            $table->timestamps();
+        Schema::table('financial_transactions', function (Blueprint $table) use ($existingNames) {
+            // 🔥 Hanya tambahkan foreign key jika belum ada
+            if (!in_array('financial_transactions_vehicle_id_foreign', $existingNames)) {
+                $table->foreign('vehicle_id')->references('id')->on('vehicles')->onDelete('set null');
+            }
+            if (!in_array('financial_transactions_driver_id_foreign', $existingNames)) {
+                $table->foreign('driver_id')->references('id')->on('drivers')->onDelete('set null');
+            }
+            if (!in_array('financial_transactions_client_id_foreign', $existingNames)) {
+                $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
+            }
+            if (!in_array('financial_transactions_created_by_foreign', $existingNames)) {
+                $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
+            }
+            if (!in_array('financial_transactions_branch_id_foreign', $existingNames)) {
+                $table->foreign('branch_id')->references('id')->on('branches')->onDelete('cascade');
+            }
         });
-
-        // Copy data dari tabel lama
-        DB::statement('INSERT INTO financial_transactions 
-            (id, transaction_date, type, category, amount, description, vehicle_id, driver_id, client_id, created_by, status, po_number, maintenance_number, created_at, updated_at)
-            SELECT id, transaction_date, type, category, amount, description, vehicle_id, driver_id, client_id, created_by, status, po_number, maintenance_number, created_at, updated_at
-            FROM financial_transactions_old');
-
-        Schema::dropIfExists('financial_transactions_old');
     }
 
     public function down()
     {
-        // Rollback: kembalikan ke struktur lama (dengan enum constraint)
-        Schema::rename('financial_transactions', 'financial_transactions_new');
-        Schema::create('financial_transactions', function (Blueprint $table) {
-            $table->id();
-            $table->date('transaction_date');
-            $table->enum('type', ['income', 'expense']);
-            $table->enum('category', ['service','fuel','toll','parking','salary','client_payment','other']);
-            $table->decimal('amount', 15, 2);
-            $table->text('description')->nullable();
-            $table->foreignId('vehicle_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('driver_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('client_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('status')->default('confirmed');
-            $table->timestamps();
+        Schema::table('financial_transactions', function (Blueprint $table) {
+            $table->dropForeign(['vehicle_id']);
+            $table->dropForeign(['driver_id']);
+            $table->dropForeign(['client_id']);
+            $table->dropForeign(['created_by']);
+            $table->dropForeign(['branch_id']);
         });
-        DB::statement('INSERT INTO financial_transactions SELECT * FROM financial_transactions_new');
-        Schema::dropIfExists('financial_transactions_new');
     }
 };
