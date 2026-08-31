@@ -6,17 +6,25 @@ use App\Models\DeliveryProject;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Traits\BranchScopeTrait;
 
 class DeliveryProjectController extends Controller
 {
-    public function index()
+    use BranchScopeTrait;
+
+    public function index(Request $request)
     {
-        $projects = DeliveryProject::with(['client', 'creator'])->get();
+        $query = DeliveryProject::with(['client', 'creator']);
+        $this->applyBranchFilter($query);
+
+        $projects = $query->get();
         return response()->json(['data' => $projects]);
     }
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+
         $validator = Validator::make($request->all(), [
             'client_id'         => 'required|exists:clients,id',
             'po_number'         => 'nullable|unique:delivery_projects,po_number',
@@ -47,6 +55,11 @@ class DeliveryProjectController extends Controller
         $data['created_by'] = auth()->id() ?? 1;
         $data['status'] = $data['status'] ?? 'draft';
 
+        // Set branch_id
+        if ($user->role !== 'super_admin') {
+            $data['branch_id'] = $user->branch_id;
+        }
+
         $project = DeliveryProject::create($data);
 
         return response()->json(['message' => 'Project berhasil dibuat', 'data' => $project], 201);
@@ -54,13 +67,25 @@ class DeliveryProjectController extends Controller
 
     public function show($id)
     {
-        $project = DeliveryProject::with(['client', 'creator', 'deliveryTasks'])->findOrFail($id);
+        $project = DeliveryProject::with(['client', 'creator', 'deliveryTasks'])
+            ->findOrFail($id);
+
+        $user = auth()->user();
+        if ($user->role !== 'super_admin' && $project->branch_id !== $user->branch_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke project ini'], 403);
+        }
+
         return response()->json(['data' => $project]);
     }
 
     public function update(Request $request, $id)
     {
         $project = DeliveryProject::findOrFail($id);
+
+        $user = auth()->user();
+        if ($user->role !== 'super_admin' && $project->branch_id !== $user->branch_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke project ini'], 403);
+        }
 
         $validator = Validator::make($request->all(), [
             'client_id'         => 'sometimes|exists:clients,id',
@@ -95,6 +120,12 @@ class DeliveryProjectController extends Controller
     public function destroy($id)
     {
         $project = DeliveryProject::findOrFail($id);
+
+        $user = auth()->user();
+        if ($user->role !== 'super_admin' && $project->branch_id !== $user->branch_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke project ini'], 403);
+        }
+
         $project->delete();
         return response()->json(['message' => 'Project berhasil dihapus']);
     }

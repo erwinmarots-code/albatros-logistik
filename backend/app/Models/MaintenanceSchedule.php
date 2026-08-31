@@ -18,6 +18,7 @@ class MaintenanceSchedule extends Model
         'mileage_interval',
         'estimated_cost',
         'status',         // scheduled, done, cancelled
+        'branch_id',
     ];
 
     public function vehicle()

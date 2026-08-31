@@ -2,19 +2,31 @@
 
 namespace App\Exports;
 
-use App\Models\Vehicle;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-
-class VehiclesExport implements FromCollection, WithHeadings
+class VehiclesExport extends BaseExport
 {
-    public function collection()
+    public function __construct($query)
     {
-        return Vehicle::all(['plate_number', 'brand', 'model', 'year', 'color', 'engine_capacity', 'fuel_type', 'status', 'price']);
+        parent::__construct($query, [
+            'ID',
+            'No. Polisi',
+            'Brand',
+            'Model',
+            'Tahun',
+            'Status',
+            'Cabang'
+        ]);
     }
 
-    public function headings(): array
+    public function map($vehicle): array
     {
-        return ['No. Polisi', 'Merek', 'Model', 'Tahun', 'Warna', 'Kapasitas Mesin', 'BBM', 'Status', 'Harga'];
+        return [
+            $vehicle->id,
+            $vehicle->plate_number,
+            $vehicle->brand,
+            $vehicle->model,
+            $vehicle->year,
+            ucfirst($vehicle->status), // active, maintenance, inactive
+            $vehicle->branch->name ?? '-',
+        ];
     }
 }

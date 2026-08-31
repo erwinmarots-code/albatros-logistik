@@ -30,6 +30,7 @@ class DeliveryProject extends Model
         'shipping_mode',
         'status',
         'created_by',
+        'branch_id',
     ];
 
     public function client()

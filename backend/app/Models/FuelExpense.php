@@ -10,24 +10,34 @@ class FuelExpense extends Model
     use HasFactory;
 
     protected $fillable = [
-        'unique_code',
         'delivery_task_id',
-        'vehicle_id',
-        'driver_id',
         'type',
         'amount',
+        'vehicle_id',
+        'driver_id',
         'description',
-        'receipt_photo',
-        'request_date',
+        'transaction_date',
         'status',
+        'unique_code',
         'approved_by',
         'approved_at',
-        'notes',
+        'created_by',
+        'branch_id',
     ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'transaction_date' => 'date',
+        'approved_at' => 'datetime',
+    ];
+
+    // ============================================================
+    // RELASI
+    // ============================================================
 
     public function deliveryTask()
     {
-        return $this->belongsTo(DeliveryTask::class);
+        return $this->belongsTo(DeliveryTask::class, 'delivery_task_id');
     }
 
     public function vehicle()
@@ -40,27 +50,38 @@ class FuelExpense extends Model
         return $this->belongsTo(Driver::class);
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /**
-     * Generate unique code dengan format UPG-YYMM-XXXX
-     * Contoh: UPG-2408-0001
-     */
-    public static function generateUniqueCode()
+    // ============================================================
+    // ACCESSORS
+    // ============================================================
+
+    public function getTypeLabelAttribute()
     {
-        $prefix = 'UPG-' . date('ym') . '-';
-        $last = self::where('unique_code', 'LIKE', $prefix . '%')
-            ->orderBy('id', 'desc')
-            ->first();
-        if ($last) {
-            $lastNumber = intval(substr($last->unique_code, -4));
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-        return $prefix . $newNumber;
+        $labels = [
+            'bahan_bakar' => 'Bahan Bakar',
+            'toll' => 'Tol',
+            'parkir' => 'Parkir',
+            'lainnya' => 'Lainnya',
+        ];
+        return $labels[$this->type] ?? $this->type;
+    }
+
+    public function getStatusLabelAttribute()
+    {
+        $labels = [
+            'pending' => 'Pending',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+        ];
+        return $labels[$this->status] ?? $this->status;
     }
 }

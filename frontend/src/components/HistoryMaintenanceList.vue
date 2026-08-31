@@ -13,6 +13,16 @@
         <i class="fas fa-search search-icon"></i>
         <input v-model="searchQuery" type="text" class="search-input" placeholder="Cari history..." />
       </div>
+      <!-- 🔥 TOMBOL EXPORT -->
+      <button
+        v-if="canExport"
+        class="btn-export"
+        @click="handleExport"
+        :disabled="isExporting"
+      >
+        <i class="fas fa-file-excel"></i>
+        {{ isExporting ? 'Mengekspor...' : 'Export Excel' }}
+      </button>
     </div>
 
     <div class="table-wrapper" v-if="filteredItems.length">
@@ -75,6 +85,7 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from '../axios'
 import { formatRupiah, statusMap, serviceTypeMap } from '../utils/helpers'
+import { useExport } from '../composables/useExport'
 
 // Helper format tanggal
 const formatDate = (date) => {
@@ -90,6 +101,12 @@ const formatDate = (date) => {
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const userRole = user.role || ''
 const canExecute = computed(() => ['admin_finance', 'super_admin'].includes(userRole))
+
+// 🔥 Hak export: super_admin, admin_transport, admin_finance
+const canExport = computed(() => ['super_admin', 'admin_transport', 'admin_finance'].includes(userRole))
+
+// 🔥 Composabel untuk export
+const { isExporting, exportData } = useExport('maintenance-requests')
 
 const items = ref([])
 const searchQuery = ref('')
@@ -124,6 +141,14 @@ const executeItem = async (id) => {
   } catch (error) {
     alert('Gagal: ' + (error.response?.data?.message || error.message))
   }
+}
+
+// 🔥 Handle Export
+const handleExport = async () => {
+  await exportData({
+    search: searchQuery.value || undefined,
+    status: 'approved,done', // hanya export history yang sudah approved/done
+  })
 }
 
 onMounted(fetchItems)
@@ -206,6 +231,32 @@ onMounted(fetchItems)
   width: 100%;
   outline: none;
   background: transparent;
+}
+
+/* 🔥 Tombol Export */
+.btn-export {
+  background: white;
+  color: #2d3748;
+  border: 1.5px solid #2b6cb0;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: 0.2s;
+}
+.btn-export:hover {
+  background: #2b6cb0;
+  color: white;
+  transform: translateY(-2px);
+}
+.btn-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .table-wrapper {
@@ -344,6 +395,16 @@ onMounted(fetchItems)
   }
   .action-cell {
     gap: 4px;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-wrapper {
+    max-width: 100%;
+  }
+  .btn-export {
+    justify-content: center;
   }
 }
 </style>

@@ -1,7 +1,49 @@
-import '@fortawesome/fontawesome-free/css/all.min.css'
 import { createApp } from 'vue'
 import App from './App.vue'
-import axios from 'axios'
-axios.defaults.baseURL = '/api'
+import router from './router'
+import axios from './axios'
 
-createApp(App).mount('#app')
+// ============================================================
+// BUAT APP INSTANCE
+// ============================================================
+
+const app = createApp(App)
+
+// ============================================================
+// PASANG ROUTER
+// ============================================================
+
+app.use(router)
+
+// ============================================================
+// MOUNT APP
+// ============================================================
+
+app.mount('#app')
+
+// ============================================================
+// CEK TOKEN SAAT APLIKASI DIMULAI
+// ============================================================
+
+const token = localStorage.getItem('token')
+if (token) {
+  // Verifikasi token ke server
+  axios.get('/user')
+    .then((response) => {
+      // Token valid, update user data jika perlu
+      const userData = response.data.data || response.data
+      if (userData) {
+        localStorage.setItem('user', JSON.stringify(userData))
+      }
+    })
+    .catch(() => {
+      // Token tidak valid, hapus dari localStorage
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      // Redirect ke login jika tidak sedang di halaman login/landing
+      const path = window.location.pathname
+      if (path !== '/' && path !== '/login') {
+        window.location.href = '/login'
+      }
+    })
+}

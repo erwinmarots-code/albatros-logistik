@@ -10,31 +10,35 @@ class DeliveryTask extends Model
     use HasFactory;
 
     protected $fillable = [
-        'shipping_project_id',
-        'client_id',
+        'project_id',
         'vehicle_id',
         'driver_id',
-        'task_date',
-        'departure_time',
-        'estimated_return_time',
-        'actual_return_time',
-        'origin',
-        'destination',
-        'description',
-        'distance_km',
+        'client_id',
+        'no_resi',
+        'tanggal',
+        'delivery_date',
         'status',
         'notes',
+        'receiver_name',
+        'receiver_address',
+        'receiver_phone',
+        'goods_description',
+        'weight_kg',
+        'collie',
         'created_by',
+        'branch_id',
     ];
 
-    public function shippingProject()
-    {
-        return $this->belongsTo(ShippingProject::class);
-    }
+    protected $casts = [
+        'tanggal' => 'date',
+        'delivery_date' => 'date',
+        'weight_kg' => 'decimal:2',
+        'collie' => 'integer',
+    ];
 
-    public function client()
+    public function project()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(ShippingProject::class, 'project_id');
     }
 
     public function vehicle()
@@ -47,6 +51,11 @@ class DeliveryTask extends Model
         return $this->belongsTo(Driver::class);
     }
 
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -54,6 +63,6 @@ class DeliveryTask extends Model
 
     public function fuelExpenses()
     {
-        return $this->hasMany(FuelExpense::class);
+        return $this->hasMany(FuelExpense::class, 'delivery_task_id');
     }
 }

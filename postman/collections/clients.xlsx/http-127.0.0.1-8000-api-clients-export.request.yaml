@@ -1,0 +1,19 @@
+$kind: http-request
+name: http://127.0.0.1:8000/api/clients/export
+description: ""
+url: http://127.0.0.1:8000/api/clients/export
+method: GET
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"admin@albatros.com\",\r
+
+    \    \"password\": \"password123\"\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: 51|TCf98Zphdg7XhAcEekSm1iGaIgITBtGJfDPGRb0V3649bbd7
+order: 1788162918507

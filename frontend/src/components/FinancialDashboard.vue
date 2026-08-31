@@ -1,636 +1,616 @@
 <template>
-  <div class="module-container">
-    <div class="module-header">
+  <div class="financial-dashboard">
+    <div class="page-header">
       <h2><i class="fas fa-chart-pie"></i> Dashboard Keuangan</h2>
-      <p class="module-subtitle">Ringkasan pemasukan & pengeluaran</p>
-    </div>
-
-    <!-- Toolbar dengan Filter Cepat -->
-    <div class="toolbar">
-      <div class="filter-group">
+      <div class="header-actions">
         <button
-          v-for="(filter, key) in quickFilters"
-          :key="key"
-          :class="['btn-filter', { active: activeFilter === key }]"
-          @click="applyQuickFilter(key)"
+          v-if="canExport"
+          class="btn btn-outline-export"
+          @click="handleExport"
+          :disabled="isExporting"
         >
-          <i :class="filter.icon"></i> {{ filter.label }}
+          <i class="fas fa-file-excel"></i>
+          {{ isExporting ? 'Mengekspor...' : 'Export Excel' }}
+        </button>
+        <button class="btn btn-primary" @click="openModal">
+          <i class="fas fa-plus-circle"></i> Tambah Transaksi
         </button>
       </div>
-      <div class="filter-custom">
-        <label>Dari: <input v-model="filter.from" type="date" @change="applyCustomFilter" /></label>
-        <label>Sampai: <input v-model="filter.to" type="date" @change="applyCustomFilter" /></label>
-      </div>
-      <button @click="fetchData" class="btn-refresh">
-        <i class="fas fa-sync-alt"></i> Muat Data
-      </button>
-      <button @click="exportExcel" class="btn-export">
-        <i class="fas fa-file-excel"></i> Export Excel
-      </button>
-      <button @click="openForm()" class="btn-add">
-        <i class="fas fa-plus-circle"></i> Tambah Transaksi
-      </button>
     </div>
 
-    <!-- Summary Cards dengan Animasi Angka -->
-    <div class="summary-cards">
-      <div class="card income">
-        <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
-        <div class="card-content">
-          <h3>Pemasukan</h3>
+    <div class="summary-grid">
+      <div class="summary-card income">
+        <div class="summary-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="summary-content">
+          <span class="summary-label">Total Pemasukan</span>
           <CountUp
-            v-if="summary.total_income !== undefined"
             :start-val="0"
-            :end-val="summary.total_income || 0"
-            :duration="1.5"
-            :decimals="0"
-            :prefix="'Rp '"
-            :thousands-sep="'.'"
-            :decimal-sep="','"
-            class="card-value"
+            :end-val="totalIncome"
+            :options="{
+              prefix: 'Rp ',
+              decimal: ',',
+              separator: '.',
+              duration: 1.5,
+            }"
+            class="summary-value"
           />
-          <small v-if="summary.income_change !== undefined" class="change positive">
-            <i class="fas fa-arrow-up"></i> {{ summary.income_change }}% dari bulan lalu
-          </small>
         </div>
       </div>
-      <div class="card expense">
-        <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
-        <div class="card-content">
-          <h3>Pengeluaran</h3>
+      <div class="summary-card expense">
+        <div class="summary-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="summary-content">
+          <span class="summary-label">Total Pengeluaran</span>
           <CountUp
-            v-if="summary.total_expense !== undefined"
             :start-val="0"
-            :end-val="summary.total_expense || 0"
-            :duration="1.5"
-            :decimals="0"
-            :prefix="'Rp '"
-            :thousands-sep="'.'"
-            :decimal-sep="','"
-            class="card-value"
+            :end-val="totalExpense"
+            :options="{
+              prefix: 'Rp ',
+              decimal: ',',
+              separator: '.',
+              duration: 1.5,
+            }"
+            class="summary-value"
           />
-          <small v-if="summary.expense_change !== undefined" class="change negative">
-            <i class="fas fa-arrow-down"></i> {{ summary.expense_change }}% dari bulan lalu
-          </small>
         </div>
       </div>
-      <div class="card balance">
-        <div class="card-icon"><i class="fas fa-wallet"></i></div>
-        <div class="card-content">
-          <h3>Saldo</h3>
+      <div class="summary-card balance">
+        <div class="summary-icon"><i class="fas fa-wallet"></i></div>
+        <div class="summary-content">
+          <span class="summary-label">Saldo Akhir</span>
           <CountUp
-            v-if="summary.balance !== undefined"
             :start-val="0"
-            :end-val="summary.balance || 0"
-            :duration="1.8"
-            :decimals="0"
-            :prefix="'Rp '"
-            :thousands-sep="'.'"
-            :decimal-sep="','"
-            class="card-value"
-            :style="{ color: summary.balance >= 0 ? '#22c55e' : '#ef4444' }"
+            :end-val="balance"
+            :options="{
+              prefix: 'Rp ',
+              decimal: ',',
+              separator: '.',
+              duration: 1.5,
+            }"
+            class="summary-value"
+            :style="{ color: balance >= 0 ? '#22c55e' : '#dc2626' }"
           />
-          <small class="change neutral">Periode terpilih</small>
+        </div>
+      </div>
+      <div class="summary-card outstanding">
+        <div class="summary-icon"><i class="fas fa-file-invoice"></i></div>
+        <div class="summary-content">
+          <span class="summary-label">Outstanding PO</span>
+          <CountUp
+            :start-val="0"
+            :end-val="outstandingCount"
+            :options="{
+              suffix: ' Invoice',
+              duration: 1.5,
+            }"
+            class="summary-value"
+          />
         </div>
       </div>
     </div>
 
-    <!-- Grafik Interaktif -->
-    <div class="chart-section">
+    <div class="chart-card">
       <div class="chart-header">
-        <h3>Pendapatan & Pengeluaran (6 Bulan Terakhir)</h3>
+        <h3>Pendapatan & Pengeluaran 6 Bulan Terakhir</h3>
         <div class="chart-legend">
           <span><span class="dot income-dot"></span> Pemasukan</span>
           <span><span class="dot expense-dot"></span> Pengeluaran</span>
         </div>
       </div>
-      <div class="chart-wrapper" v-if="!chartLoading">
-        <Bar :data="chartData" :options="chartOptions" />
-      </div>
-      <div v-else class="chart-loading">
-        <i class="fas fa-spinner fa-spin"></i> Memuat grafik...
+      <div class="chart-wrapper">
+        <canvas id="financialChart"></canvas>
       </div>
     </div>
 
-    <!-- Form Tambah/Edit Transaksi -->
-    <div v-if="showForm" class="form-container">
-      <h3><i class="fas fa-edit"></i> {{ editingTransId ? 'Edit Transaksi' : 'Tambah Transaksi Manual' }}</h3>
-      <form @submit.prevent="saveTransaction">
-        <div class="form-group">
-          <label><i class="fas fa-calendar-alt"></i> Tanggal <span class="required">*</span></label>
-          <input v-model="transForm.transaction_date" type="date" required />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-exchange-alt"></i> Tipe <span class="required">*</span></label>
-          <select v-model="transForm.type" required>
-            <option value="income">Pemasukan</option>
-            <option value="expense">Pengeluaran</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-tags"></i> Kategori <span class="required">*</span></label>
-          <select v-model="transForm.category" required>
-            <option value="client_payment">Pembayaran Client</option>
-            <option value="service">Service</option>
-            <option value="fuel">BBM</option>
-            <option value="toll">Tol</option>
-            <option value="parking">Parkir</option>
-            <option value="salary">Gaji</option>
-            <option value="other">Lainnya</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-money-bill-wave"></i> Nominal <span class="required">*</span></label>
-          <input v-model="transForm.amount" type="number" required placeholder="0" />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-pencil-alt"></i> Deskripsi</label>
-          <input v-model="transForm.description" placeholder="Keterangan" />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-car"></i> Kendaraan</label>
-          <select v-model="transForm.vehicle_id">
-            <option value="">Pilih Kendaraan</option>
-            <option v-for="v in vehicles" :key="v.id" :value="v.id">{{ v.plate_number }}</option>
-          </select>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan</button>
-          <button type="button" @click="closeForm" class="btn-cancel"><i class="fas fa-times"></i> Batal</button>
-        </div>
-      </form>
+    <div class="table-card">
+      <div class="table-header">
+        <h3><i class="fas fa-history"></i> Transaksi Terbaru</h3>
+      </div>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Tipe</th>
+              <th>Kategori</th>
+              <th>Nominal</th>
+              <th>Deskripsi</th>
+              <th>No. PO / Resi</th>
+              <th>No. Perawatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loadingTransactions"><td colspan="7" class="text-center">Memuat data...</td></tr>
+            <tr v-else-if="!recentTransactions.length"><td colspan="7" class="text-center">Belum ada transaksi</td></tr>
+            <tr v-for="tx in recentTransactions" :key="tx.id">
+              <td>{{ formatDate(tx.transaction_date) }}</td>
+              <td>
+                <span class="badge" :class="tx.type === 'income' ? 'badge-income' : 'badge-expense'">
+                  {{ tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
+                </span>
+              </td>
+              <td>{{ tx.category || '-' }}</td>
+              <td class="currency">{{ formatCurrency(tx.amount) }}</td>
+              <td>{{ tx.description || '-' }}</td>
+              <td>{{ tx.po_number || '-' }}</td>
+              <td>{{ tx.maintenance_number || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- Tabel Transaksi dengan Search -->
-    <div class="table-wrapper" v-if="filteredTransactions.length">
-      <table class="modern-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th><i class="fas fa-calendar-alt"></i> Tanggal</th>
-            <th><i class="fas fa-exchange-alt"></i> Tipe</th>
-            <th><i class="fas fa-tags"></i> Kategori</th>
-            <th><i class="fas fa-money-bill-wave"></i> Nominal</th>
-            <th>Deskripsi</th>
-            <th><i class="fas fa-car"></i> Kendaraan</th>
-            <th class="text-center"><i class="fas fa-cogs"></i> Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in filteredTransactions" :key="item.id">
-            <td>{{ index + 1 }}</td>
-            <td>{{ item.transaction_date }}</td>
-            <td>
-              <span :class="'type-badge-' + item.type">
-                {{ item.type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
-              </span>
-            </td>
-            <td>{{ item.category }}</td>
-            <td>{{ formatRupiah(item.amount) }}</td>
-            <td>{{ item.description || '-' }}</td>
-            <td>{{ item.vehicle?.plate_number || '-' }}</td>
-            <td class="action-cell">
-              <button @click="editTransaction(item)" class="btn-edit"><i class="fas fa-edit"></i></button>
-              <button @click="deleteTransaction(item.id)" class="btn-delete"><i class="fas fa-trash-alt"></i></button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3><i class="fas fa-plus-circle"></i> Tambah Transaksi</h3>
+          <button class="btn-close" @click="closeModal">&times;</button>
+        </div>
+        <form @submit.prevent="saveTransaction" class="modal-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Tipe Transaksi <span class="required">*</span></label>
+              <select v-model="form.type" class="form-control" required>
+                <option value="">Pilih Tipe</option>
+                <option value="income">Pemasukan</option>
+                <option value="expense">Pengeluaran</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Kategori <span class="required">*</span></label>
+              <select v-model="form.category" class="form-control" @change="onCategoryChange" required>
+                <option value="">Pilih Kategori</option>
+                <option value="service">Service</option>
+                <option value="fuel">Bahan Bakar</option>
+                <option value="toll">Tol</option>
+                <option value="parking">Parkir</option>
+                <option value="salary">Gaji</option>
+                <option value="client_payment">Pembayaran Client</option>
+                <option value="other">Lainnya...</option>
+              </select>
+            </div>
+            <div v-if="form.category === 'other'" class="form-group">
+              <label>Kategori Lainnya <span class="required">*</span></label>
+              <input v-model="form.custom_category" type="text" class="form-control" placeholder="Masukkan kategori lain" required />
+            </div>
+            <div class="form-group">
+              <label>Nominal (Rp) <span class="required">*</span></label>
+              <input v-model.number="form.amount" type="number" class="form-control" placeholder="0" required min="1" />
+            </div>
+            <div class="form-group">
+              <label>Tanggal Transaksi <span class="required">*</span></label>
+              <input v-model="form.transaction_date" type="date" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label>No. PO / No. Resi</label>
+              <input v-model="form.po_number" type="text" class="form-control" placeholder="Kosongkan jika tidak ada" />
+            </div>
+            <div class="form-group">
+              <label>No. Pengajuan Perawatan</label>
+              <input v-model="form.maintenance_number" type="text" class="form-control" placeholder="Kosongkan jika tidak ada" />
+            </div>
+            <div class="form-group full-width">
+              <label>Deskripsi</label>
+              <textarea v-model="form.description" class="form-control" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @click="closeModal">Batal</button>
+            <button type="submit" class="btn btn-success" :disabled="loadingSubmit">
+              <i v-if="loadingSubmit" class="fas fa-spinner fa-spin"></i>
+              {{ loadingSubmit ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-    <p v-else class="empty-message">{{ searchQuery ? 'Tidak ada transaksi yang cocok dengan pencarian.' : 'Belum ada transaksi keuangan.' }}</p>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+<script>
 import axios from '../axios'
-import { formatRupiah } from '../utils/helpers'
-import { Bar } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-} from 'chart.js'
-import CountUp from 'vue-countup-v3'   
+import { Chart, registerables } from 'chart.js'
+import CountUp from 'vue-countup-v3'
+import { useExport } from '../composables/useExport'
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+Chart.register(...registerables)
 
-// ===== STATE =====
-const transactions = ref([])
-const vehicles = ref([])
-const summary = ref({})
-const chartLoading = ref(true)
-const showForm = ref(false)
-const editingTransId = ref(null)
-const searchQuery = ref('')
+export default {
+  name: 'FinancialDashboard',
+  components: { CountUp },
+  data() {
+    return {
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+      outstandingCount: 0,
+      chartLabels: [],
+      chartIncome: [],
+      chartExpense: [],
+      chartInstance: null,
+      recentTransactions: [],
+      loadingTransactions: false,
+      showModal: false,
+      loadingSubmit: false,
+      form: {
+        type: '',
+        category: '',
+        custom_category: '',
+        amount: 0,
+        transaction_date: new Date().toISOString().slice(0, 10),
+        description: '',
+        po_number: '',
+        maintenance_number: '',
+      },
+    }
+  },
+  computed: {
+    user() {
+      return JSON.parse(localStorage.getItem('user') || '{}')
+    },
+    canExport() {
+      const role = this.user?.role
+      return ['super_admin', 'admin_finance'].includes(role)
+    },
+  },
+  setup() {
+    const { isExporting, exportData } = useExport('financial-transactions')
+    return { isExporting, exportData }
+  },
+  mounted() {
+    this.loadSummary()
+    this.loadChart()
+    this.loadTransactions()
+  },
+  beforeUnmount() {
+    if (this.chartInstance) {
+      this.chartInstance.destroy()
+    }
+  },
+  methods: {
+    formatCurrency(val) {
+      if (!val) return 'Rp 0'
+      return 'Rp ' + Number(val).toLocaleString('id-ID')
+    },
 
-const filter = reactive({
-  from: '',
-  to: '',
-})
+    formatDate(date) {
+      if (!date) return '-'
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return '-'
+      return d.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    },
 
-const activeFilter = ref('month') // default bulan ini
-
-const quickFilters = {
-  today: { label: 'Hari Ini', icon: 'fas fa-calendar-day' },
-  week: { label: 'Minggu Ini', icon: 'fas fa-calendar-week' },
-  month: { label: 'Bulan Ini', icon: 'fas fa-calendar-alt' },
-  custom: { label: 'Kustom', icon: 'fas fa-calendar' },
-}
-
-const transForm = reactive({
-  transaction_date: new Date().toISOString().split('T')[0],
-  type: 'income',
-  category: 'client_payment',
-  amount: '',
-  description: '',
-  vehicle_id: '',
-})
-
-// ===== CHART OPTIONS =====
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    tooltip: {
-      callbacks: {
-        label: (context) => {
-          let label = context.dataset.label || ''
-          let value = context.parsed.y
-          if (value >= 1000000) return label + ': Rp ' + (value / 1000000).toFixed(1) + ' JT'
-          if (value >= 1000) return label + ': Rp ' + (value / 1000).toFixed(1) + ' RB'
-          return label + ': Rp ' + value
-        }
+    async loadSummary() {
+      try {
+        const res = await axios.get('/financial-summary')
+        const data = res.data.data || res.data || {}
+        this.totalIncome = data.total_income || 0
+        this.totalExpense = data.total_expense || 0
+        this.balance = data.balance || 0
+        this.outstandingCount = data.outstanding_count || 0
+      } catch (e) {
+        console.error('Error loading summary:', e)
       }
     },
-    legend: { display: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-        callback: (value) => {
-          if (value >= 1000000) return 'Rp ' + (value / 1000000).toFixed(1) + 'JT'
-          if (value >= 1000) return 'Rp ' + (value / 1000).toFixed(1) + 'RB'
-          return 'Rp ' + value
+
+    async loadChart() {
+      try {
+        const res = await axios.get('/financial/chart')
+        this.chartLabels = res.data.labels || []
+        this.chartIncome = res.data.income || []
+        this.chartExpense = res.data.expense || []
+        if (this.chartLabels.length) {
+          this.renderChart()
+        }
+      } catch (e) {
+        console.error('Error loading chart:', e)
+      }
+    },
+
+    renderChart() {
+      const ctx = document.getElementById('financialChart')
+      if (!ctx) return
+      if (this.chartInstance) {
+        this.chartInstance.destroy()
+      }
+      this.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: this.chartLabels,
+          datasets: [
+            { label: 'Pemasukan', data: this.chartIncome, backgroundColor: '#4f46e5', borderRadius: 6 },
+            { label: 'Pengeluaran', data: this.chartExpense, backgroundColor: '#ef4444', borderRadius: 6 },
+          ],
         },
-      },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => {
+                  if (value >= 1000000) return 'Rp ' + (value / 1000000).toFixed(1) + ' JT'
+                  if (value >= 1000) return 'Rp ' + (value / 1000).toFixed(1) + ' RB'
+                  return 'Rp ' + value
+                },
+              },
+            },
+          },
+        },
+      })
+    },
+
+    async loadTransactions() {
+      this.loadingTransactions = true
+      try {
+        const res = await axios.get('/financial-transactions?limit=10&sort=desc')
+        this.recentTransactions = res.data.data || []
+      } catch (e) {
+        console.error('Error loading transactions:', e)
+      } finally {
+        this.loadingTransactions = false
+      }
+    },
+
+    openModal() {
+      this.form = {
+        type: '',
+        category: '',
+        custom_category: '',
+        amount: 0,
+        transaction_date: new Date().toISOString().slice(0, 10),
+        description: '',
+        po_number: '',
+        maintenance_number: '',
+      }
+      this.showModal = true
+    },
+
+    closeModal() {
+      this.showModal = false
+      this.loadingSubmit = false
+    },
+
+    onCategoryChange() {
+      if (this.form.category !== 'other') {
+        this.form.custom_category = ''
+      }
+    },
+
+    async saveTransaction() {
+      if (this.form.category === 'other' && !this.form.custom_category.trim()) {
+        alert('Harap masukkan kategori lainnya')
+        return
+      }
+
+      let finalCategory = this.form.category
+      if (this.form.category === 'other') {
+        finalCategory = this.form.custom_category.trim()
+      }
+
+      if (!this.form.type || !finalCategory || !this.form.amount || !this.form.transaction_date) {
+        alert('Harap isi semua field yang wajib (bertanda *)')
+        return
+      }
+
+      this.loadingSubmit = true
+      try {
+        const payload = {
+          type: this.form.type,
+          category: finalCategory,
+          amount: this.form.amount,
+          transaction_date: this.form.transaction_date,
+          description: this.form.description || null,
+          po_number: this.form.po_number || null,
+          maintenance_number: this.form.maintenance_number || null,
+        }
+
+        await axios.post('/financial-transactions', payload)
+        this.closeModal()
+        this.loadSummary()
+        this.loadChart()
+        this.loadTransactions()
+      } catch (e) {
+        console.error('Error saving transaction:', e)
+        alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message))
+      } finally {
+        this.loadingSubmit = false
+      }
+    },
+
+    async handleExport() {
+      await this.exportData({})
     },
   },
 }
-
-const chartData = ref({
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-  datasets: [
-    {
-      label: 'Pemasukan',
-      backgroundColor: '#4f46e5',
-      borderRadius: 6,
-      data: [],
-    },
-    {
-      label: 'Pengeluaran',
-      backgroundColor: '#ef4444',
-      borderRadius: 6,
-      data: [],
-    },
-  ],
-})
-
-// ===== COMPUTED =====
-const filteredTransactions = computed(() => {
-  let data = transactions.value
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    data = data.filter(item =>
-      item.category?.toLowerCase().includes(q) ||
-      item.description?.toLowerCase().includes(q) ||
-      item.type?.toLowerCase().includes(q) ||
-      item.vehicle?.plate_number?.toLowerCase().includes(q)
-    )
-  }
-  return data
-})
-
-// ===== FUNGSI FILTER =====
-const applyQuickFilter = (key) => {
-  activeFilter.value = key
-  const now = new Date()
-  let from, to
-  switch (key) {
-    case 'today':
-      from = new Date(now)
-      to = new Date(now)
-      break
-    case 'week':
-      const day = now.getDay()
-      from = new Date(now)
-      from.setDate(now.getDate() - day)
-      to = new Date(now)
-      to.setDate(now.getDate() + (6 - day))
-      break
-    case 'month':
-      from = new Date(now.getFullYear(), now.getMonth(), 1)
-      to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      break
-    default:
-      return
-  }
-  filter.from = from.toISOString().split('T')[0]
-  filter.to = to.toISOString().split('T')[0]
-  fetchSummary()
-}
-
-const applyCustomFilter = () => {
-  activeFilter.value = 'custom'
-  fetchSummary()
-}
-
-// ===== FETCH DATA =====
-const fetchTransactions = async () => {
-  try {
-    const res = await axios.get('/financial-transactions')
-    transactions.value = res.data.data || []
-  } catch (error) {
-    console.error('Gagal memuat transaksi:', error)
-    alert('Gagal memuat transaksi: ' + error.message)
-  }
-}
-
-const fetchSummary = async () => {
-  try {
-    const params = {}
-    if (filter.from) params.from = filter.from
-    if (filter.to) params.to = filter.to
-    const res = await axios.get('/financial-summary', { params })
-    summary.value = res.data || {}
-  } catch (error) {
-    console.error('Gagal memuat summary:', error)
-    alert('Gagal memuat summary: ' + error.message)
-  }
-}
-
-const fetchVehicles = async () => {
-  try {
-    const res = await axios.get('/vehicles')
-    vehicles.value = res.data.data || []
-  } catch (error) {
-    console.error('Gagal memuat kendaraan:', error)
-    alert('Gagal memuat kendaraan: ' + error.message)
-  }
-}
-
-const fetchChart = async () => {
-  chartLoading.value = true
-  try {
-    const res = await axios.get('/dashboard/chart')
-    chartData.value = {
-      labels: res.data.labels,
-      datasets: [
-        { ...chartData.value.datasets[0], data: res.data.income },
-        { ...chartData.value.datasets[1], data: res.data.expense },
-      ],
-    }
-  } catch (error) {
-    console.error('Gagal memuat grafik:', error)
-  } finally {
-    chartLoading.value = false
-  }
-}
-
-const fetchData = () => {
-  fetchTransactions()
-  fetchSummary()
-  fetchChart()
-}
-
-// ===== CRUD TRANSAKSI =====
-const openForm = (mode = 'add', data = null) => {
-  showForm.value = true
-  if (mode === 'add') {
-    transForm.transaction_date = new Date().toISOString().split('T')[0]
-    transForm.type = 'income'
-    transForm.category = 'client_payment'
-    transForm.amount = ''
-    transForm.description = ''
-    transForm.vehicle_id = ''
-    editingTransId.value = null
-  } else if (data) {
-    Object.assign(transForm, data)
-    editingTransId.value = data.id
-  }
-}
-
-const closeForm = () => {
-  showForm.value = false
-  editingTransId.value = null
-}
-
-const saveTransaction = async () => {
-  try {
-    if (editingTransId.value) {
-      await axios.put(`/financial-transactions/${editingTransId.value}`, transForm)
-      alert('Transaksi berhasil diupdate!')
-    } else {
-      await axios.post('/financial-transactions', transForm)
-      alert('Transaksi berhasil ditambahkan!')
-    }
-    closeForm()
-    await fetchTransactions()
-    await fetchSummary()
-  } catch (error) {
-    alert('Gagal menyimpan: ' + (error.response?.data?.message || error.message))
-  }
-}
-
-const editTransaction = (item) => openForm('edit', item)
-const deleteTransaction = async (id) => {
-  if (!confirm('Yakin hapus transaksi ini?')) return
-  try {
-    await axios.delete(`/financial-transactions/${id}`)
-    alert('Transaksi dihapus!')
-    await fetchTransactions()
-    await fetchSummary()
-  } catch (error) {
-    alert('Gagal hapus: ' + error.message)
-  }
-}
-
-// ===== EXPORT EXCEL =====
-const exportExcel = async () => {
-  try {
-    let url = '/export/financial-transactions'
-    const params = new URLSearchParams()
-    if (filter.from) params.append('from', filter.from)
-    if (filter.to) params.append('to', filter.to)
-    if (params.toString()) url += '?' + params.toString()
-
-    const response = await axios.get(url, { responseType: 'blob' })
-    const blob = new Blob([response.data], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
-    const link = document.createElement('a')
-    link.href = window.URL.createObjectURL(blob)
-    link.download = `laporan_keuangan_${new Date().toISOString().slice(0,10)}.xlsx`
-    link.click()
-    window.URL.revokeObjectURL(link.href)
-  } catch (error) {
-    alert('Gagal export: ' + error.message)
-  }
-}
-
-// ===== WATCH FILTER =====
-watch(() => [filter.from, filter.to], () => {
-  if (activeFilter.value !== 'custom') return
-  fetchSummary()
-})
-
-// ===== MOUNTED =====
-onMounted(() => {
-  // Set default filter: bulan ini
-  const now = new Date()
-  const from = new Date(now.getFullYear(), now.getMonth(), 1)
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  filter.from = from.toISOString().split('T')[0]
-  filter.to = to.toISOString().split('T')[0]
-  activeFilter.value = 'month'
-  fetchData()
-  fetchVehicles()
-})
 </script>
 
 <style scoped>
-/* ====== GAYA MODERN ====== */
-.module-container { max-width: 1200px; margin: 0 auto; }
-.module-header { margin-bottom: 24px; }
-.module-header h2 { font-size: 28px; color: #0d2b45; display: flex; align-items: center; gap: 12px; }
-.module-header h2 i { color: #1a4a7a; }
-.module-subtitle { color: #6c757d; font-size: 14px; margin-top: 2px; }
+/* ========================================================== */
+/* GLOBAL */
+/* ========================================================== */
+.financial-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
 
-.toolbar {
+/* ========================================================== */
+/* HEADER */
+/* ========================================================== */
+.page-header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 20px;
-  align-items: center;
 }
-.filter-group {
-  display: flex;
-  gap: 4px;
-  background: #f1f3f5;
-  padding: 4px;
-  border-radius: 30px;
-}
-.btn-filter {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 30px;
-  background: transparent;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: #495057;
-}
-.btn-filter:hover { background: rgba(0,0,0,0.05); }
-.btn-filter.active {
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+.page-header h2 {
+  font-size: 24px;
+  font-weight: 700;
   color: #0d2b45;
+  margin: 0;
 }
-.btn-filter i { margin-right: 4px; }
-
-.filter-custom {
+.page-header h2 i {
+  color: #2b6cb0;
+  margin-right: 8px;
+}
+.header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-}
-.filter-custom label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 500;
-}
-.filter-custom input {
-  padding: 6px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 13px;
+  flex-wrap: wrap;
 }
 
-.btn-add, .btn-refresh, .btn-export {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 30px;
-  font-weight: 600;
+/* ========================================================== */
+/* BUTTONS */
+/* ========================================================== */
+.btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 13px;
 }
-.btn-add { background: #28a745; color: white; }
-.btn-add:hover { background: #218838; transform: translateY(-1px); }
-.btn-refresh { background: #17a2b8; color: white; }
-.btn-refresh:hover { background: #138496; transform: translateY(-1px); }
-.btn-export { background: #007bff; color: white; }
-.btn-export:hover { background: #0069d9; transform: translateY(-1px); }
+.btn-primary {
+  background: #2b6cb0;
+  color: white;
+}
+.btn-primary:hover {
+  background: #1a4a7a;
+  transform: translateY(-2px);
+}
+.btn-success {
+  background: #22c55e;
+  color: white;
+}
+.btn-success:hover {
+  background: #16a34a;
+}
+.btn-secondary {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+.btn-secondary:hover {
+  background: #cbd5e1;
+}
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+.btn-close:hover {
+  color: #dc2626;
+}
+.btn-outline-export {
+  background: white;
+  color: #2d3748;
+  border: 1.5px solid #2b6cb0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.2s;
+}
+.btn-outline-export:hover {
+  background: #2b6cb0;
+  color: white;
+  transform: translateY(-2px);
+}
+.btn-outline-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
 
-/* ===== SUMMARY CARDS ===== */
-.summary-cards {
+/* ========================================================== */
+/* SUMMARY CARDS */
+/* ========================================================== */
+.summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 28px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.card {
+.summary-card {
   background: white;
+  padding: 20px;
   border-radius: 16px;
-  padding: 20px 24px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: 0.2s;
 }
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
-.card-icon {
+.summary-icon {
   width: 48px;
   height: 48px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
   font-size: 20px;
   flex-shrink: 0;
 }
-.card.income .card-icon { background: #e6f7e6; color: #28a745; }
-.card.expense .card-icon { background: #fde8e8; color: #dc3545; }
-.card.balance .card-icon { background: #e6f2ff; color: #1a4a7a; }
+.summary-card.income .summary-icon {
+  background: #4f46e5;
+}
+.summary-card.expense .summary-icon {
+  background: #ef4444;
+}
+.summary-card.balance .summary-icon {
+  background: #22c55e;
+}
+.summary-card.outstanding .summary-icon {
+  background: #eab308;
+}
+.summary-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.summary-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+.summary-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a202c;
+}
 
-.card-content { flex: 1; }
-.card-content h3 { font-size: 13px; color: #6c757d; margin: 0 0 4px 0; font-weight: 500; }
-.card-value { font-size: 22px; font-weight: 700; color: #0d2b45; }
-.card .change { font-size: 12px; font-weight: 600; margin-left: 4px; }
-.change.positive { color: #28a745; }
-.change.negative { color: #dc3545; }
-.change.neutral { color: #6c757d; }
-
-/* ===== CHART ===== */
-.chart-section {
+/* ========================================================== */
+/* CHART */
+/* ========================================================== */
+.chart-card {
   background: white;
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   margin-bottom: 24px;
 }
 .chart-header {
@@ -639,12 +619,17 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
 }
-.chart-header h3 { font-size: 16px; font-weight: 600; color: #0d2b45; margin: 0; }
+.chart-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0d2b45;
+  margin: 0;
+}
 .chart-legend {
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6c757d;
+  color: #6b7280;
 }
 .chart-legend .dot {
   display: inline-block;
@@ -653,163 +638,204 @@ onMounted(() => {
   border-radius: 4px;
   margin-right: 4px;
 }
-.dot.income-dot { background: #4f46e5; }
-.dot.expense-dot { background: #ef4444; }
-.chart-wrapper { height: 280px; position: relative; }
-.chart-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 280px;
-  color: #6c757d;
+.income-dot {
+  background: #4f46e5;
 }
-.chart-loading i { margin-right: 8px; }
+.expense-dot {
+  background: #ef4444;
+}
+.chart-wrapper {
+  height: 280px;
+  position: relative;
+}
 
-/* ===== FORM ===== */
-.form-container {
+/* ========================================================== */
+/* TABLE */
+/* ========================================================== */
+.table-card {
   background: white;
   border-radius: 16px;
-  padding: 24px 28px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  margin: 16px 0 24px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
-.form-container h3 {
-  font-size: 20px;
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.table-header h3 {
+  font-size: 16px;
+  font-weight: 600;
   color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 2px solid #e9ecef;
-  padding-bottom: 12px;
-  margin-bottom: 20px;
+  margin: 0;
 }
-.form-container h3 i { color: #1a4a7a; }
-.form-group {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+.table-header h3 i {
+  color: #2b6cb0;
+  margin-right: 8px;
 }
-.form-group label {
-  font-weight: 600;
-  color: #2d3748;
-  text-align: right;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-end;
-}
-.form-group label i { color: #1a4a7a; width: 20px; text-align: center; }
-.required { color: #dc3545; margin-left: 2px; }
-.form-group input, .form-group select {
-  padding: 10px 14px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: border-color 0.2s;
-  background: white;
-  width: 100%;
-  box-sizing: border-box;
-}
-.form-group input:focus, .form-group select:focus {
-  outline: none;
-  border-color: #1a4a7a;
-  box-shadow: 0 0 0 3px rgba(26,74,122,0.12);
-}
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e9ecef;
-}
-.btn-save, .btn-cancel {
-  padding: 10px 28px;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-.btn-save { background: #28a745; color: white; }
-.btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40,167,69,0.3); }
-.btn-cancel { background: #6c757d; color: white; }
-.btn-cancel:hover { background: #5a6268; transform: translateY(-2px); }
-
-/* ===== TABLE ===== */
 .table-wrapper {
   overflow-x: auto;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-  padding: 4px 0;
-  margin-top: 16px;
 }
-.modern-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 700px; }
-.modern-table thead { background: #f8fafc; border-bottom: 2px solid #e9ecef; }
-.modern-table thead th { padding: 14px 16px; text-align: left; font-weight: 700; color: #2d3748; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-.modern-table thead th i { margin-right: 6px; color: #1a4a7a; }
-.modern-table tbody tr { border-bottom: 1px solid #f1f3f5; transition: background 0.15s ease; }
-.modern-table tbody tr:hover { background: #f8fafc; }
-.modern-table tbody td { padding: 12px 16px; color: #2d3748; vertical-align: middle; }
-.modern-table tbody td:first-child { font-weight: 600; color: #6c757d; width: 40px; text-align: center; }
-.text-center { text-align: center; }
-.action-cell { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.table thead {
+  background: #f7fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+.table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+  white-space: nowrap;
+}
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f3f5;
+  vertical-align: middle;
+}
+.table tbody tr:hover {
+  background: #f7fafc;
+}
+.text-center {
+  text-align: center;
+}
+.currency {
+  font-weight: 600;
+  color: #1a202c;
+}
 
-.type-badge-income {
-  background: #28a745;
-  color: white;
+/* ========================================================== */
+/* BADGE */
+/* ========================================================== */
+.badge {
+  display: inline-block;
   padding: 2px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
 }
-.type-badge-expense {
-  background: #dc3545;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+.badge-income {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.badge-expense {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.btn-edit, .btn-delete {
-  border: none;
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
+/* ========================================================== */
+/* MODAL */
+/* ========================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  z-index: 1000;
+  padding: 20px;
 }
-.btn-edit { background: #ffc107; color: #212529; }
-.btn-edit:hover { background: #e0a800; transform: scale(1.08); }
-.btn-delete { background: #dc3545; color: white; }
-.btn-delete:hover { background: #c82333; transform: scale(1.08); }
-
-.empty-message {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6c757d;
-  font-size: 16px;
-  background: #f8f9fa;
-  border-radius: 16px;
+.modal-card {
+  background: white;
+  border-radius: 20px;
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
-.empty-message i { font-size: 40px; display: block; margin-bottom: 12px; color: #dee2e6; }
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.modal-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0d2b45;
+  margin: 0;
+}
+.modal-header h3 i {
+  color: #2b6cb0;
+  margin-right: 8px;
+}
+.modal-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
+}
+.modal-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+.modal-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+.modal-form .form-group label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2d3748;
+  margin-bottom: 4px;
+}
+.modal-form .form-group .required {
+  color: #dc2626;
+}
+.modal-form .form-control {
+  padding: 8px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.modal-form .form-control:focus {
+  outline: none;
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+}
+.modal-form textarea.form-control {
+  resize: vertical;
+  min-height: 60px;
+}
+.modal-form .form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
 
+/* ========================================================== */
+/* RESPONSIVE */
+/* ========================================================== */
 @media (max-width: 768px) {
-  .form-group { grid-template-columns: 1fr; gap: 4px; }
-  .form-group label { text-align: left; justify-content: flex-start; }
-  .modern-table { font-size: 13px; min-width: 500px; }
-  .modern-table thead th, .modern-table tbody td { padding: 10px 12px; }
-  .action-cell { gap: 4px; }
+  .modal-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+  .header-actions .btn {
+    justify-content: center;
+  }
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

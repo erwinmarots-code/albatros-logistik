@@ -1,672 +1,865 @@
 <template>
-  <div class="module-container">
-    <div class="module-header">
+  <div class="fuel-expense-container">
+    <!-- Header -->
+    <div class="page-header">
       <h2><i class="fas fa-coins"></i> Pengajuan Biaya Operasional</h2>
-      <p class="module-subtitle">Kelola pengajuan biaya perjalanan (menunggu persetujuan)</p>
-    </div>
-
-    <div class="toolbar">
-      <button v-if="canCreate" @click="openForm()" class="btn-add">
-        <i class="fas fa-plus-circle"></i> Ajukan Biaya
-      </button>
-      <button @click="fetchItems" class="btn-refresh">
-        <i class="fas fa-sync-alt"></i> Muat Data
-      </button>
-      <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
-        <input v-model="searchQuery" type="text" class="search-input" placeholder="Cari pengajuan..." />
+      <div class="header-actions">
+        <!-- 🔥 TOMBOL EXPORT -->
+        <button
+          v-if="canExport"
+          class="btn btn-outline-export"
+          @click="handleExport"
+          :disabled="isExporting"
+        >
+          <i class="fas fa-file-excel"></i>
+          {{ isExporting ? 'Mengekspor...' : 'Export Excel' }}
+        </button>
+        <button v-if="canCreate" class="btn btn-primary" @click="openForm">
+          <i class="fas fa-plus-circle"></i> Tambah Pengajuan
+        </button>
       </div>
     </div>
 
-    <!-- Form -->
-    <div v-if="showForm && canCreate" class="form-container">
-      <h3><i class="fas fa-edit"></i> {{ formMode === 'add' ? 'Ajukan Biaya Baru' : 'Edit Pengajuan' }}</h3>
-      <form @submit.prevent="saveItem">
+    <!-- Form Tambah/Edit -->
+    <div v-if="showForm && canCreate" class="form-card">
+      <h3>{{ formMode === 'edit' ? 'Edit Pengajuan' : 'Tambah Pengajuan Baru' }}</h3>
+      <form @submit.prevent="saveData" class="form-grid">
+        <div v-if="validationErrors" class="error-box full-width">
+          <ul>
+            <li v-for="(err, key) in validationErrors" :key="key">
+              <strong>{{ key }}:</strong> {{ err.join(', ') }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- No. Resi / Project (hanya yang belum punya pengajuan) -->
         <div class="form-group">
-          <label><i class="fas fa-tasks"></i> Tugas Pengantaran <span class="required">*</span></label>
-          <select v-model="form.delivery_task_id" required>
-            <option value="">Pilih Tugas</option>
-            <option v-for="t in tasks" :key="t.id" :value="t.id">
-              {{ t.client?.name }} - {{ t.vehicle?.plate_number }} ({{ t.task_date }})
+          <label>No. Resi / Project <span class="required">*</span></label>
+          <select
+            v-model="form.delivery_task_id"
+            class="form-control"
+            required
+            @change="autoFillFromTask"
+          >
+            <option value="">Pilih Tugas Kirim</option>
+            <option
+              v-for="task in deliveryTasks"
+              :key="task.id"
+              :value="task.id"
+            >
+              {{ task.no_resi }} - {{ task.project?.no_po || '-' }}
             </option>
           </select>
         </div>
+
+        <!-- Jenis Biaya -->
         <div class="form-group">
-          <label><i class="fas fa-tag"></i> Jenis Biaya <span class="required">*</span></label>
-          <select v-model="form.type" required>
-            <option value="fuel">BBM</option>
+          <label>Jenis Biaya <span class="required">*</span></label>
+          <select v-model="form.type" class="form-control" required>
+            <option value="">Pilih Jenis</option>
+            <option value="bahan_bakar">Bahan Bakar</option>
             <option value="toll">Tol</option>
-            <option value="parking">Parkir</option>
-            <option value="meal">Makan</option>
-            <option value="other">Lainnya</option>
+            <option value="parkir">Parkir</option>
+            <option value="lainnya">Lainnya</option>
           </select>
         </div>
+
+        <!-- Nominal -->
         <div class="form-group">
-          <label><i class="fas fa-money-bill-wave"></i> Nominal (Rp) <span class="required">*</span></label>
-          <input v-model="form.amount" type="number" required placeholder="0" />
+          <label>Nominal (Rp) <span class="required">*</span></label>
+          <input
+            v-model.number="form.amount"
+            type="number"
+            class="form-control"
+            placeholder="0"
+            required
+            min="0"
+          />
         </div>
+
+        <!-- Kendaraan (auto-fill) -->
         <div class="form-group">
-          <label><i class="fas fa-pencil-alt"></i> Deskripsi</label>
-          <input v-model="form.description" placeholder="Keterangan" />
+          <label>Kendaraan <span class="required">*</span></label>
+          <select v-model="form.vehicle_id" class="form-control" required>
+            <option value="">Pilih Kendaraan</option>
+            <option
+              v-for="v in vehicles"
+              :key="v.id"
+              :value="v.id"
+            >
+              {{ v.plate_number }} - {{ v.brand }} {{ v.model }}
+            </option>
+          </select>
         </div>
+
+        <!-- Driver (auto-fill) -->
         <div class="form-group">
-          <label><i class="fas fa-calendar-alt"></i> Tanggal Pengajuan <span class="required">*</span></label>
-          <input v-model="form.request_date" type="date" required />
+          <label>Driver <span class="required">*</span></label>
+          <select v-model="form.driver_id" class="form-control" required>
+            <option value="">Pilih Driver</option>
+            <option
+              v-for="d in drivers"
+              :key="d.id"
+              :value="d.id"
+            >
+              {{ d.name }} ({{ d.license_number || '-' }})
+            </option>
+          </select>
         </div>
-        <div class="form-actions">
-          <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan</button>
-          <button type="button" @click="closeForm" class="btn-cancel"><i class="fas fa-times"></i> Batal</button>
+
+        <!-- Tanggal Transaksi -->
+        <div class="form-group">
+          <label>Tanggal Transaksi <span class="required">*</span></label>
+          <input
+            v-model="form.transaction_date"
+            type="date"
+            class="form-control"
+            required
+          />
+        </div>
+
+        <!-- Deskripsi -->
+        <div class="form-group full-width">
+          <label>Deskripsi / Keterangan</label>
+          <textarea
+            v-model="form.description"
+            class="form-control"
+            rows="2"
+            placeholder="Catatan tambahan"
+          ></textarea>
+        </div>
+
+        <div class="form-actions full-width">
+          <button type="submit" class="btn btn-success" :disabled="loading">
+            <i v-if="loading" class="fas fa-spinner fa-spin"></i>
+            {{ formMode === 'edit' ? 'Update' : 'Simpan' }}
+          </button>
+          <button type="button" class="btn btn-secondary" @click="closeForm">
+            Batal
+          </button>
         </div>
       </form>
     </div>
 
-    <!-- TABLE -->
-    <div class="table-wrapper" v-if="filteredItems.length">
-      <table class="modern-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th><i class="fas fa-key"></i> Kode Unik</th>
-            <th><i class="fas fa-tasks"></i> Tugas</th>
-            <th><i class="fas fa-tag"></i> Jenis</th>
-            <th><i class="fas fa-money-bill-wave"></i> Nominal</th>
-            <th><i class="fas fa-calendar-alt"></i> Tanggal</th>
-            <th><i class="fas fa-circle"></i> Status</th>
-            <th class="text-center"><i class="fas fa-cogs"></i> Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in filteredItems" :key="item.id">
-            <td>{{ index + 1 }}</td>
-            <td><strong>{{ item.unique_code }}</strong></td>
-            <td>{{ item.delivery_task?.client?.name || '-' }}</td>
-            <td>
-              <span :class="'type-badge-' + item.type">{{ item.type }}</span>
-            </td>
-            <td>{{ formatRupiah(item.amount) }}</td>
-            <td>{{ formatDate(item.request_date) }}</td>
-            <td>
-              <span :class="'status-badge-' + item.status">{{ statusMap[item.status] || item.status }}</span>
-            </td>
-            <td class="action-cell">
-              <template v-if="canApprove && item.status === 'pending'">
-                <button @click="approveItem(item.id)" class="btn-approve" title="Setujui">
+    <!-- Tabel Data -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-filter">
+          <select
+            v-model="filterStatus"
+            class="form-control-sm"
+            @change="fetchData"
+          >
+            <option value="">Semua Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Disetujui</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+          <input
+            v-model="search"
+            type="text"
+            class="form-control-sm"
+            placeholder="Cari Kode / No. Resi..."
+            @input="fetchData"
+          />
+        </div>
+        <span class="table-info">Total: {{ totalItems }} data</span>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Kode Unik</th>
+              <th>No. Resi</th>
+              <th>Jenis</th>
+              <th>Nominal</th>
+              <th>Kendaraan</th>
+              <th>Driver</th>
+              <th>Tanggal</th>
+              <th>Status</th>
+              <th class="text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="9" class="text-center">Memuat...</td>
+            </tr>
+            <tr v-else-if="!data.length">
+              <td colspan="9" class="text-center">Tidak ada data</td>
+            </tr>
+            <tr v-for="item in data" :key="item.id">
+              <td><strong>{{ item.unique_code }}</strong></td>
+              <td>{{ item.delivery_task?.no_resi || '-' }}</td>
+              <td>{{ item.type_label || item.type }}</td>
+              <td class="currency">{{ formatCurrency(item.amount) }}</td>
+              <td>{{ item.vehicle?.plate_number || '-' }}</td>
+              <td>{{ item.driver?.name || '-' }}</td>
+              <td>{{ formatDateDisplay(item.transaction_date) }}</td>
+              <td>
+                <span
+                  class="badge"
+                  :class="statusBadge(item.status)"
+                >
+                  {{ item.status_label || item.status }}
+                </span>
+              </td>
+              <td class="text-center">
+                <!-- Approve (admin_finance / super_admin) -->
+                <button
+                  v-if="canApprove && item.status === 'pending'"
+                  class="btn-icon approve"
+                  title="Setujui"
+                  @click="approveData(item.id)"
+                >
                   <i class="fas fa-check-circle"></i>
                 </button>
-                <button @click="rejectItem(item.id)" class="btn-reject" title="Tolak">
+
+                <!-- Reject (admin_finance / super_admin) -->
+                <button
+                  v-if="canApprove && item.status === 'pending'"
+                  class="btn-icon reject"
+                  title="Tolak"
+                  @click="rejectData(item.id)"
+                >
                   <i class="fas fa-times-circle"></i>
                 </button>
-              </template>
-              <button v-if="canCreate" @click="editItem(item)" class="btn-edit" title="Edit">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button v-if="canCreate" @click="deleteItem(item.id)" class="btn-delete" title="Hapus">
-                <i class="fas fa-trash-alt"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+
+                <!-- Edit (hanya untuk pending dan pembuat) -->
+                <button
+                  v-if="canEdit(item)"
+                  class="btn-icon"
+                  title="Edit"
+                  @click="editData(item)"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+
+                <!-- Hapus (hanya Super Admin) -->
+                <button
+                  v-if="canDelete"
+                  class="btn-icon danger"
+                  title="Hapus"
+                  @click="deleteData(item.id)"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <p v-else class="empty-message">
-      <i class="fas fa-inbox"></i>
-      {{ searchQuery ? 'Tidak ada pengajuan yang cocok dengan pencarian.' : 'Tidak ada pengajuan biaya yang menunggu persetujuan.' }}
-    </p>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+<script>
 import axios from '../axios'
-import { formatRupiah, statusMap } from '../utils/helpers'
+import { useExport } from '../composables/useExport'
 
-// ===== HELPER FORMAT TANGGAL =====
-const formatDate = (date) => {
-  if (!date) return '-'
-  const d = new Date(date)
-  return d.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
-}
-
-// ===== USER ROLE =====
-const user = JSON.parse(localStorage.getItem('user') || '{}')
-const userRole = user.role || ''
-const canCreate = computed(() => userRole !== 'admin_finance')
-const canApprove = computed(() => ['admin_finance', 'super_admin'].includes(userRole))
-
-// ===== STATE =====
-const items = ref([])
-const tasks = ref([])
-const searchQuery = ref('')
-const showForm = ref(false)
-const formMode = ref('add')
-const editingId = ref(null)
-
-const form = reactive({
-  delivery_task_id: '',
-  type: 'fuel',
-  amount: '',
-  description: '',
-  request_date: '',
-})
-
-// ===== COMPUTED FILTER =====
-const filteredItems = computed(() => {
-  let data = items.value.filter(item => item.status === 'pending')
-  if (!searchQuery.value) return data
-  const q = searchQuery.value.toLowerCase()
-  return data.filter(item =>
-    item.unique_code?.toLowerCase().includes(q) ||
-    item.type?.toLowerCase().includes(q) ||
-    item.amount?.toString().includes(q) ||
-    item.status?.toLowerCase().includes(q) ||
-    item.delivery_task?.client?.name?.toLowerCase().includes(q)
-  )
-})
-
-// ===== FETCH DATA =====
-const fetchItems = async () => {
-  try {
-    const res = await axios.get('/fuel-expenses')
-    items.value = res.data.data || []
-  } catch (error) {
-    alert('Gagal memuat data: ' + error.message)
-  }
-}
-
-const fetchTasks = async () => {
-  try {
-    const res = await axios.get('/delivery-tasks')
-    tasks.value = res.data.data || []
-  } catch (error) {
-    alert('Gagal memuat tugas: ' + error.message)
-  }
-}
-
-// ===== FORM =====
-const openForm = (mode = 'add', data = null) => {
-  if (!canCreate.value) return
-  formMode.value = mode
-  showForm.value = true
-  if (mode === 'add') {
-    form.delivery_task_id = ''
-    form.type = 'fuel'
-    form.amount = ''
-    form.description = ''
-    form.request_date = ''
-    editingId.value = null
-  } else if (data) {
-    Object.assign(form, data)
-    editingId.value = data.id
-  }
-}
-
-const closeForm = () => {
-  showForm.value = false
-  formMode.value = 'add'
-  editingId.value = null
-}
-
-// ===== CRUD =====
-const saveItem = async () => {
-  try {
-    if (formMode.value === 'add') {
-      await axios.post('/fuel-expenses', form)
-      alert('Pengajuan biaya berhasil dibuat!')
-    } else {
-      await axios.put(`/fuel-expenses/${editingId.value}`, form)
-      alert('Pengajuan biaya berhasil diupdate!')
+export default {
+  name: 'FuelExpenseList',
+  data() {
+    return {
+      data: [],
+      deliveryTasks: [],
+      vehicles: [],
+      drivers: [],
+      loading: false,
+      showForm: false,
+      formMode: 'add',
+      validationErrors: null,
+      filterStatus: '',
+      search: '',
+      totalItems: 0,
+      form: {
+        id: null,
+        delivery_task_id: '',
+        type: '',
+        amount: 0,
+        vehicle_id: '',
+        driver_id: '',
+        transaction_date: this.getTodayDate(),
+        description: '',
+      },
     }
-    closeForm()
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal menyimpan: ' + (error.response?.data?.message || error.message))
-  }
-}
+  },
+  computed: {
+    user() {
+      return JSON.parse(localStorage.getItem('user') || '{}')
+    },
+    // Hak membuat pengajuan
+    canCreate() {
+      return ['super_admin', 'admin_project', 'admin_finance', 'branch_admin', 'staff'].includes(this.user?.role)
+    },
+    // Hak approve/reject
+    canApprove() {
+      return ['super_admin', 'admin_finance'].includes(this.user?.role)
+    },
+    // 🔥 Hak export
+    canExport() {
+      return ['super_admin', 'admin_finance', 'admin_transport'].includes(this.user?.role)
+    },
+    // Hak edit (pending & milik sendiri, kecuali admin_finance yang tidak bisa edit)
+    canEdit() {
+      return (item) => {
+        if (item.status !== 'pending') return false
+        if (this.user?.role === 'super_admin') return true
+        if (this.user?.role === 'admin_finance') return false
+        return item.created_by === this.user?.id
+      }
+    },
+    // Hak hapus (hanya Super Admin)
+    canDelete() {
+      return this.user?.role === 'super_admin'
+    },
+  },
+  setup() {
+    // 🔥 Composabel untuk export
+    const { isExporting, exportData } = useExport('fuel-expenses')
+    return { isExporting, exportData }
+  },
+  mounted() {
+    this.fetchData()
+    this.fetchOptions()
+  },
+  methods: {
+    getTodayDate() {
+      const d = new Date()
+      return (
+        d.getFullYear() +
+        '-' +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        '-' +
+        String(d.getDate()).padStart(2, '0')
+      )
+    },
 
-const approveItem = async (id) => {
-  if (!canApprove.value) return
-  if (!confirm('Setujui pengajuan ini?')) return
-  try {
-    await axios.post(`/fuel-expenses/${id}/approve`)
-    alert('Pengajuan disetujui!')
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal menyetujui: ' + error.message)
-  }
-}
+    formatDateInput(date) {
+      if (!date) return ''
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return ''
+      return (
+        d.getFullYear() +
+        '-' +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        '-' +
+        String(d.getDate()).padStart(2, '0')
+      )
+    },
 
-const rejectItem = async (id) => {
-  if (!canApprove.value) return
-  if (!confirm('Tolak pengajuan ini?')) return
-  try {
-    await axios.post(`/fuel-expenses/${id}/reject`)
-    alert('Pengajuan ditolak!')
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal menolak: ' + error.message)
-  }
-}
+    formatDateDisplay(date) {
+      if (!date) return '-'
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return '-'
+      return (
+        String(d.getDate()).padStart(2, '0') +
+        '-' +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        '-' +
+        d.getFullYear()
+      )
+    },
 
-const editItem = (item) => openForm('edit', item)
-const deleteItem = async (id) => {
-  if (!canCreate.value) return
-  if (!confirm('Yakin hapus pengajuan ini?')) return
-  try {
-    await axios.delete(`/fuel-expenses/${id}`)
-    alert('Pengajuan dihapus!')
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal hapus: ' + error.message)
-  }
-}
+    formatCurrency(val) {
+      if (!val) return 'Rp 0'
+      return 'Rp ' + Number(val).toLocaleString('id-ID')
+    },
 
-// ===== MOUNTED =====
-onMounted(() => {
-  fetchItems()
-  fetchTasks()
-})
+    async fetchData() {
+      this.loading = true
+      try {
+        const params = {
+          status: this.filterStatus || undefined,
+          search: this.search || undefined,
+        }
+        const res = await axios.get('/fuel-expenses', { params })
+        this.data = res.data.data || []
+        this.totalItems = this.data.length
+      } catch (e) {
+        console.error('Error fetching fuel expenses:', e)
+        alert('Gagal memuat data: ' + (e.response?.data?.message || e.message))
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // 🔥 Hanya ambil delivery task yang belum memiliki pengajuan biaya
+    async fetchOptions() {
+      try {
+        const [tasksRes, vehiclesRes, driversRes] = await Promise.all([
+          axios.get('/delivery-tasks?available_for_expense=true&limit=100'),
+          axios.get('/vehicles?all=true'),
+          axios.get('/drivers?all=true'),
+        ])
+        this.deliveryTasks = tasksRes.data.data || []
+        this.vehicles = vehiclesRes.data.data || []
+        this.drivers = driversRes.data.data || []
+      } catch (e) {
+        console.error('Error fetching options:', e)
+      }
+    },
+
+    // Auto-fill kendaraan, driver, dan tanggal dari task yang dipilih
+    autoFillFromTask() {
+      const selectedTask = this.deliveryTasks.find(
+        (t) => t.id === this.form.delivery_task_id
+      )
+      if (selectedTask) {
+        this.form.vehicle_id = selectedTask.vehicle_id || ''
+        this.form.driver_id = selectedTask.driver_id || ''
+        const taskDate = selectedTask.tanggal || selectedTask.delivery_date
+        this.form.transaction_date =
+          this.formatDateInput(taskDate) || this.getTodayDate()
+        if (!this.form.description) {
+          this.form.description = `Biaya untuk tugas ${selectedTask.no_resi}`
+        }
+      } else {
+        this.form.vehicle_id = ''
+        this.form.driver_id = ''
+        this.form.transaction_date = this.getTodayDate()
+        this.form.description = ''
+      }
+    },
+
+    openForm() {
+      this.formMode = 'add'
+      this.validationErrors = null
+      this.form = {
+        id: null,
+        delivery_task_id: '',
+        type: '',
+        amount: 0,
+        vehicle_id: '',
+        driver_id: '',
+        transaction_date: this.getTodayDate(),
+        description: '',
+      }
+      this.showForm = true
+    },
+
+    closeForm() {
+      this.showForm = false
+      this.validationErrors = null
+    },
+
+    editData(item) {
+      this.formMode = 'edit'
+      this.validationErrors = null
+      this.form = {
+        id: item.id,
+        delivery_task_id: item.delivery_task_id || '',
+        type: item.type || '',
+        amount: item.amount || 0,
+        vehicle_id: item.vehicle_id || '',
+        driver_id: item.driver_id || '',
+        transaction_date: this.formatDateInput(item.transaction_date) || this.getTodayDate(),
+        description: item.description || '',
+      }
+      this.showForm = true
+    },
+
+    async saveData() {
+      this.loading = true
+      this.validationErrors = null
+      try {
+        const payload = { ...this.form }
+        delete payload.id
+
+        if (this.formMode === 'edit') {
+          await axios.put(`/fuel-expenses/${this.form.id}`, payload)
+        } else {
+          await axios.post('/fuel-expenses', payload)
+        }
+        this.closeForm()
+        this.fetchData()
+        // Refresh dropdown options agar task yang sudah dipakai tidak muncul lagi
+        this.fetchOptions()
+        alert('Data berhasil disimpan')
+      } catch (e) {
+        if (e.response && e.response.status === 422) {
+          this.validationErrors = e.response.data.errors
+        } else {
+          alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message))
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async approveData(id) {
+      if (!confirm('Setujui pengajuan ini?')) return
+      try {
+        await axios.post(`/fuel-expenses/${id}/approve`)
+        this.fetchData()
+        alert('Pengajuan berhasil disetujui')
+      } catch (e) {
+        alert('Gagal menyetujui: ' + (e.response?.data?.message || e.message))
+      }
+    },
+
+    async rejectData(id) {
+      if (!confirm('Tolak pengajuan ini?')) return
+      try {
+        await axios.post(`/fuel-expenses/${id}/reject`)
+        this.fetchData()
+        alert('Pengajuan berhasil ditolak')
+      } catch (e) {
+        alert('Gagal menolak: ' + (e.response?.data?.message || e.message))
+      }
+    },
+
+    async deleteData(id) {
+      if (!confirm('Yakin ingin menghapus pengajuan ini?')) return
+      try {
+        await axios.delete(`/fuel-expenses/${id}`)
+        this.fetchData()
+        // Refresh dropdown options agar task yang dihapus muncul kembali
+        this.fetchOptions()
+        alert('Pengajuan berhasil dihapus')
+      } catch (e) {
+        alert('Gagal menghapus: ' + (e.response?.data?.message || e.message))
+      }
+    },
+
+    statusBadge(status) {
+      const map = {
+        pending: 'badge-warning',
+        approved: 'badge-success',
+        rejected: 'badge-danger',
+      }
+      return map[status] || 'badge-secondary'
+    },
+
+    // ===== 🔥 EXPORT EXCEL =====
+    async handleExport() {
+      await this.exportData({
+        search: this.search || undefined,
+        status: this.filterStatus || undefined,
+      })
+    },
+  },
+}
 </script>
 
 <style scoped>
-/* ====== GAYA KONSISTEN ====== */
-.module-container {
+.fuel-expense-container {
   max-width: 1200px;
   margin: 0 auto;
-}
-.module-header {
-  margin-bottom: 20px;
-}
-.module-header h2 {
-  font-size: 24px;
-  color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.module-header h2 i {
-  color: #1a4a7a;
-}
-.module-subtitle {
-  color: #6c757d;
-  font-size: 14px;
-  margin-top: 2px;
+  padding: 0 16px;
 }
 
-.toolbar {
+.page-header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 16px;
-  align-items: center;
 }
-.btn-add,
-.btn-refresh {
-  padding: 10px 22px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.25s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.page-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0d2b45;
+  margin: 0;
 }
-.btn-add {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-.btn-add:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
-}
-.btn-refresh {
-  background: linear-gradient(135deg, #17a2b8, #138496);
-  color: white;
-}
-.btn-refresh:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(23, 162, 184, 0.3);
-}
-
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  flex: 1;
-  max-width: 300px;
-}
-.search-wrapper:focus-within {
-  border-color: #1a4a7a;
-  box-shadow: 0 0 0 3px rgba(26, 74, 122, 0.12);
-}
-.search-icon {
-  color: #94a3b8;
+.page-header h2 i {
+  color: #2b6cb0;
   margin-right: 8px;
 }
-.search-input {
-  border: none;
-  padding: 10px 0;
-  font-size: 14px;
-  width: 100%;
-  outline: none;
-  background: transparent;
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.form-container {
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: #2b6cb0;
+  color: white;
+}
+.btn-primary:hover {
+  background: #1a4a7a;
+  transform: translateY(-2px);
+}
+.btn-success {
+  background: #22c55e;
+  color: white;
+}
+.btn-success:hover {
+  background: #16a34a;
+}
+.btn-secondary {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+.btn-secondary:hover {
+  background: #cbd5e1;
+}
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+.btn-close:hover {
+  color: #dc2626;
+}
+.btn-outline-export {
+  background: white;
+  color: #2d3748;
+  border: 1.5px solid #2b6cb0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.2s;
+}
+.btn-outline-export:hover {
+  background: #2b6cb0;
+  color: white;
+  transform: translateY(-2px);
+}
+.btn-outline-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.form-card {
   background: white;
   border-radius: 16px;
-  padding: 24px 28px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  margin: 16px 0 24px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
-.form-container h3 {
-  font-size: 20px;
+.form-card h3 {
+  font-size: 18px;
+  font-weight: 600;
   color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 2px solid #e9ecef;
+  margin: 0 0 20px 0;
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 12px;
-  margin-bottom: 20px;
 }
-.form-container h3 i {
-  color: #1a4a7a;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
 }
 .form-group {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 .form-group label {
   font-weight: 600;
+  font-size: 14px;
   color: #2d3748;
-  text-align: right;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-end;
+  margin-bottom: 4px;
 }
-.form-group label i {
-  color: #1a4a7a;
-  width: 20px;
-  text-align: center;
+.form-group .required {
+  color: #dc2626;
 }
-.required {
-  color: #dc3545;
-  margin-left: 2px;
-}
-.form-group input,
-.form-group select {
-  padding: 10px 14px;
+.form-control {
+  padding: 8px 12px;
   border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 14px;
   transition: border-color 0.2s;
-  background: white;
   width: 100%;
-  box-sizing: border-box;
 }
-.form-group input:focus,
-.form-group select:focus {
+.form-control:focus {
   outline: none;
-  border-color: #1a4a7a;
-  box-shadow: 0 0 0 3px rgba(26, 74, 122, 0.12);
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+}
+textarea.form-control {
+  resize: vertical;
+  min-height: 60px;
+}
+.form-control-sm {
+  padding: 6px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
 }
 .form-actions {
+  grid-column: 1 / -1;
   display: flex;
-  justify-content: flex-end;
   gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e9ecef;
-}
-.btn-save,
-.btn-cancel {
-  padding: 10px 28px;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-.btn-save {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-.btn-save:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
-}
-.btn-cancel {
-  background: #6c757d;
-  color: white;
-}
-.btn-cancel:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
+  margin-top: 8px;
+  justify-content: flex-end;
 }
 
-.table-wrapper {
-  overflow-x: auto;
+.table-card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  padding: 4px 0;
-  margin-top: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
-.modern-table {
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.table-filter {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.table-info {
+  font-size: 14px;
+  color: #6b7280;
+}
+.table-wrapper {
+  overflow-x: auto;
+}
+.table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  min-width: 700px;
 }
-.modern-table thead {
-  background: #f8fafc;
-  border-bottom: 2px solid #e9ecef;
+.table thead {
+  background: #f7fafc;
+  border-bottom: 2px solid #e2e8f0;
 }
-.modern-table thead th {
-  padding: 14px 16px;
+.table th {
+  padding: 10px 12px;
   text-align: left;
-  font-weight: 700;
+  font-weight: 600;
   color: #2d3748;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
-.modern-table thead th i {
-  margin-right: 6px;
-  color: #1a4a7a;
-}
-.modern-table tbody tr {
+.table td {
+  padding: 10px 12px;
   border-bottom: 1px solid #f1f3f5;
-  transition: background 0.15s ease;
-}
-.modern-table tbody tr:hover {
-  background: #f8fafc;
-}
-.modern-table tbody td {
-  padding: 12px 16px;
-  color: #2d3748;
   vertical-align: middle;
 }
-.modern-table tbody td:first-child {
-  font-weight: 600;
-  color: #6c757d;
-  width: 40px;
-  text-align: center;
+.table tbody tr:hover {
+  background: #f7fafc;
 }
 .text-center {
   text-align: center;
 }
-.action-cell {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
+.currency {
+  font-weight: 600;
+  color: #1a202c;
 }
 
-.type-badge-fuel {
-  background: #ffc107;
-  color: black;
+.badge {
+  display: inline-block;
   padding: 2px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
+  text-transform: capitalize;
 }
-.type-badge-toll {
-  background: #17a2b8;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+.badge-warning {
+  background: #fef3c7;
+  color: #92400e;
 }
-.type-badge-parking {
-  background: #6f42c1;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
 }
-.type-badge-meal {
-  background: #fd7e14;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+.badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
 }
-.type-badge-other {
-  background: #6c757d;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+.badge-secondary {
+  background: #e2e8f0;
+  color: #475569;
 }
 
-.status-badge-pending {
-  background: #ffc107;
-  color: black;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.status-badge-approved {
-  background: #28a745;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.status-badge-rejected {
-  background: #dc3545;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.btn-edit,
-.btn-delete,
-.btn-approve,
-.btn-reject {
+.btn-icon {
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  padding: 6px 10px;
+  padding: 4px 8px;
+  color: #4a5568;
   cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
+  transition: 0.2s;
+  font-size: 16px;
 }
-.btn-edit {
-  background: #ffc107;
-  color: #212529;
+.btn-icon:hover {
+  color: #2b6cb0;
 }
-.btn-edit:hover {
-  background: #e0a800;
-  transform: scale(1.08);
+.btn-icon.danger:hover {
+  color: #dc2626;
 }
-.btn-delete {
-  background: #dc3545;
-  color: white;
+.btn-icon.approve {
+  color: #22c55e;
 }
-.btn-delete:hover {
-  background: #c82333;
-  transform: scale(1.08);
+.btn-icon.approve:hover {
+  color: #16a34a;
 }
-.btn-approve {
-  background: #28a745;
-  color: white;
+.btn-icon.reject {
+  color: #dc2626;
 }
-.btn-approve:hover {
-  background: #218838;
-  transform: scale(1.08);
-}
-.btn-reject {
-  background: #dc3545;
-  color: white;
-}
-.btn-reject:hover {
-  background: #c82333;
-  transform: scale(1.08);
+.btn-icon.reject:hover {
+  color: #b91c1c;
 }
 
-.empty-message {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6c757d;
-  font-size: 16px;
-  background: #f8f9fa;
-  border-radius: 16px;
+.error-box {
+  padding: 12px 16px;
+  background: #fee2e2;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  color: #991b1b;
 }
-.empty-message i {
-  font-size: 40px;
-  display: block;
-  margin-bottom: 12px;
-  color: #dee2e6;
+.error-box ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.error-box ul li {
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {
-  .form-group {
+  .form-grid {
     grid-template-columns: 1fr;
-    gap: 4px;
   }
-  .form-group label {
-    text-align: left;
-    justify-content: flex-start;
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .modern-table {
-    font-size: 13px;
-    min-width: 500px;
+  .header-actions {
+    justify-content: stretch;
+    flex-direction: column;
   }
-  .modern-table thead th,
-  .modern-table tbody td {
-    padding: 10px 12px;
+  .header-actions .btn {
+    justify-content: center;
   }
-  .action-cell {
-    gap: 4px;
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .table-filter {
+    flex-direction: column;
   }
 }
 </style>

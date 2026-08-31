@@ -3,24 +3,22 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
     {
-        // Nonaktifkan foreign key checks sementara
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // Nonaktifkan foreign key constraints (kompatibel dengan SQLite & MySQL)
+        Schema::disableForeignKeyConstraints();
 
-        $this->call([
-            VehicleSeeder::class,
-            DriverSeeder::class,
-            ClientSeeder::class,
-            MaintenanceScheduleSeeder::class,
-            MaintenanceRequestSeeder::class,
-        ]);
+        // Panggil seeder master
+        $this->call(MasterDataSeeder::class);
 
-        // Aktifkan kembali foreign key checks
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // Aktifkan kembali foreign key constraints
+        Schema::enableForeignKeyConstraints();
     }
 }

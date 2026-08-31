@@ -9,11 +9,12 @@ class CheckRole
 {
     public function handle(Request $request, Closure $next, ...$roles)
     {
-        if (!auth()->check()) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if (!in_array(auth()->user()->role, $roles)) {
+        if (!in_array($user->role, $roles)) {
             return response()->json(['message' => 'Forbidden - Anda tidak memiliki akses'], 403);
         }
 

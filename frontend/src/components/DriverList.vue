@@ -1,568 +1,233 @@
 <template>
-  <div class="module-container">
-    <div class="module-header">
+  <div>
+    <div class="list-header">
       <h2><i class="fas fa-user-tie"></i> Manajemen Driver</h2>
-      <p class="module-subtitle">Kelola data driver operasional</p>
     </div>
 
+    <!-- TOOLBAR -->
     <div class="toolbar">
-      <button v-if="canCreate" @click="openForm()" class="btn-add">
+      <button @click="openForm()" class="btn-primary">
         <i class="fas fa-plus-circle"></i> Tambah Driver
       </button>
-      <button @click="fetchItems" class="btn-refresh">
-        <i class="fas fa-sync-alt"></i> Muat Data
+      <button @click="loadDrivers" class="btn-outline">
+        <i class="fas fa-sync-alt"></i> Muat
       </button>
-      <button @click="exportExcel" class="btn-export">
-        <i class="fas fa-file-excel"></i> Export Excel
+      <label class="btn-outline" style="cursor:pointer;">
+        <i class="fas fa-file-upload"></i> Import
+        <input type="file" ref="fileInput" @change="handleImport" accept=".xlsx,.csv" style="display:none">
+      </label>
+      <button @click="exportData" class="btn-outline">
+        <i class="fas fa-file-excel"></i> Export
       </button>
-      <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
-        <input v-model="searchQuery" type="text" class="search-input" placeholder="Cari driver..." />
-      </div>
     </div>
 
-    <!-- Form Tambah/Edit -->
-    <div v-if="showForm && canCreate" class="form-container">
-      <h3><i class="fas fa-edit"></i> {{ formMode === 'add' ? 'Tambah Driver' : 'Edit Driver' }}</h3>
-      <form @submit.prevent="saveItem">
-        <div class="form-group">
-          <label><i class="fas fa-user"></i> Nama Driver <span class="required">*</span></label>
-          <input v-model="form.name" required placeholder="Nama lengkap driver" />
+    <!-- FORM -->
+    <div v-if="showForm" class="form-card">
+      <h4>{{ formMode === 'add' ? 'Tambah Driver' : 'Edit Driver' }}</h4>
+      <form @submit.prevent="saveDriver">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nama <span class="required">*</span></label>
+            <input v-model="form.name" required />
+          </div>
+          <div class="form-group">
+            <label>Telepon</label>
+            <input v-model="form.phone" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>No. SIM</label>
+            <input v-model="form.license_number" />
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select v-model="form.status">
+              <option value="available">Available</option>
+              <option value="on_duty">On Duty</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label><i class="fas fa-phone"></i> Telepon</label>
-          <input v-model="form.phone" placeholder="08123456789" />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-id-card"></i> Nomor SIM <span class="required">*</span></label>
-          <input v-model="form.license_number" required placeholder="SIM-123456" />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-map-marker-alt"></i> Alamat</label>
-          <input v-model="form.address" placeholder="Alamat lengkap" />
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-circle"></i> Status <span class="required">*</span></label>
-          <select v-model="form.status" required>
-            <option value="active">Aktif</option>
-            <option value="inactive">Tidak Aktif</option>
-          </select>
+          <label>Alamat</label>
+          <textarea v-model="form.address" rows="2"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan</button>
-          <button type="button" @click="closeForm" class="btn-cancel"><i class="fas fa-times"></i> Batal</button>
+          <button type="button" @click="closeForm" class="btn-cancel">Batal</button>
         </div>
       </form>
     </div>
 
-    <!-- Tabel -->
-    <div class="table-wrapper" v-if="filteredItems.length">
-      <table class="modern-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th><i class="fas fa-user"></i> Nama</th>
-            <th><i class="fas fa-phone"></i> Telepon</th>
-            <th><i class="fas fa-id-card"></i> Nomor SIM</th>
-            <th><i class="fas fa-map-marker-alt"></i> Alamat</th>
-            <th><i class="fas fa-circle"></i> Status</th>
-            <th class="text-center"><i class="fas fa-cogs"></i> Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in filteredItems" :key="item.id">
-            <td>{{ index + 1 }}</td>
-            <td><strong>{{ item.name }}</strong></td>
-            <td>{{ item.phone || '-' }}</td>
-            <td>{{ item.license_number }}</td>
-            <td>{{ item.address || '-' }}</td>
-            <td>
-              <span :class="'status-badge-' + item.status">
-                {{ item.status === 'active' ? 'Aktif' : 'Tidak Aktif' }}
-              </span>
-            </td>
-            <td class="action-cell">
-              <button v-if="canCreate" @click="editItem(item)" class="btn-edit" title="Edit">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button v-if="canCreate" @click="deleteItem(item.id)" class="btn-delete" title="Hapus">
-                <i class="fas fa-trash-alt"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- TABLE -->
+    <div v-if="loading" class="loading-state"><i class="fas fa-spinner fa-spin"></i> Memuat...</div>
+    <div v-else class="table-card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Nama</th><th>Telepon</th><th>No. SIM</th><th>Alamat</th><th>Status</th><th class="text-center">Aksi</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(d, idx) in drivers" :key="d.id">
+              <td>{{ idx+1 }}</td>
+              <td><strong>{{ d.name }}</strong></td>
+              <td>{{ d.phone || '-' }}</td>
+              <td>{{ d.license_number || '-' }}</td>
+              <td>{{ d.address || '-' }}</td>
+              <td><span class="badge" :class="'badge-' + d.status">{{ d.status }}</span></td>
+              <td class="text-center">
+                <button @click="editDriver(d)" class="btn-icon"><i class="fas fa-edit"></i></button>
+                <button @click="deleteDriver(d.id)" class="btn-icon danger"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>
+            <tr v-if="drivers.length === 0"><td colspan="7" class="text-center empty-state">Belum ada driver</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <p v-else class="empty-message">
-      <i class="fas fa-inbox"></i>
-      {{ searchQuery ? 'Tidak ada driver yang cocok dengan pencarian.' : 'Belum ada data driver.' }}
-    </p>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+<script>
 import axios from '../axios'
 
-// ===== USER ROLE =====
-const user = JSON.parse(localStorage.getItem('user') || '{}')
-const userRole = user.role || ''
-const canCreate = computed(() => userRole !== 'admin_finance')
-
-// ===== STATE =====
-const items = ref([])
-const searchQuery = ref('')
-const showForm = ref(false)
-const formMode = ref('add')
-const editingId = ref(null)
-
-const form = reactive({
-  name: '',
-  phone: '',
-  license_number: '',
-  address: '',
-  status: 'active',
-})
-
-// ===== COMPUTED FILTER =====
-const filteredItems = computed(() => {
-  if (!searchQuery.value) return items.value
-  const q = searchQuery.value.toLowerCase()
-  return items.value.filter(item =>
-    item.name?.toLowerCase().includes(q) ||
-    item.phone?.toLowerCase().includes(q) ||
-    item.license_number?.toLowerCase().includes(q) ||
-    item.address?.toLowerCase().includes(q) ||
-    item.status?.toLowerCase().includes(q)
-  )
-})
-
-// ===== CRUD =====
-const fetchItems = async () => {
-  try {
-    const res = await axios.get('/drivers')
-    items.value = res.data.data || []
-  } catch (error) {
-    alert('Gagal memuat data: ' + error.message)
-  }
-}
-
-const openForm = (mode = 'add', data = null) => {
-  if (!canCreate.value) return
-  formMode.value = mode
-  showForm.value = true
-  if (mode === 'add') {
-    form.name = ''
-    form.phone = ''
-    form.license_number = ''
-    form.address = ''
-    form.status = 'active'
-    editingId.value = null
-  } else if (data) {
-    Object.assign(form, data)
-    editingId.value = data.id
-  }
-}
-
-const closeForm = () => {
-  showForm.value = false
-  formMode.value = 'add'
-  editingId.value = null
-}
-
-const saveItem = async () => {
-  try {
-    if (formMode.value === 'add') {
-      await axios.post('/drivers', form)
-      alert('Driver berhasil ditambahkan!')
-    } else {
-      await axios.put(`/drivers/${editingId.value}`, form)
-      alert('Driver berhasil diupdate!')
+export default {
+  data() {
+    return {
+      loading: false,
+      drivers: [],
+      showForm: false,
+      formMode: 'add',
+      editingId: null,
+      form: { name: '', phone: '', license_number: '', address: '', status: 'available' }
     }
-    closeForm()
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal menyimpan: ' + (error.response?.data?.message || error.message))
-  }
+  },
+  methods: {
+    async loadDrivers() {
+      this.loading = true
+      try {
+        const res = await axios.get('/drivers')
+        this.drivers = res.data.data || []
+      } catch (e) { console.error(e) }
+      finally { this.loading = false }
+    },
+    async exportData() {
+      try {
+        const res = await axios.get('/drivers/export', { responseType: 'blob' })
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', 'drivers.xlsx')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      } catch (e) {
+        alert('Gagal export: ' + e.message)
+      }
+    },
+    async handleImport(event) {
+      const file = event.target.files[0]
+      if (!file) return
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        await axios.post('/drivers/import', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        alert('Import berhasil!')
+        this.loadDrivers()
+      } catch (e) {
+        alert('Gagal import: ' + (e.response?.data?.message || e.message))
+      }
+      this.$refs.fileInput.value = ''
+    },
+    openForm(mode = 'add', data = null) {
+      this.formMode = mode
+      this.showForm = true
+      if (mode === 'add') {
+        this.form = { name: '', phone: '', license_number: '', address: '', status: 'available' }
+        this.editingId = null
+      } else if (data) {
+        this.form = { ...data }
+        this.editingId = data.id
+      }
+    },
+    closeForm() {
+      this.showForm = false
+      this.formMode = 'add'
+      this.editingId = null
+    },
+    async saveDriver() {
+      try {
+        if (this.formMode === 'add') {
+          await axios.post('/drivers', this.form)
+          alert('Driver berhasil ditambahkan!')
+        } else {
+          await axios.put(`/drivers/${this.editingId}`, this.form)
+          alert('Driver berhasil diupdate!')
+        }
+        this.closeForm()
+        this.loadDrivers()
+      } catch (e) {
+        alert('Gagal: ' + (e.response?.data?.message || e.message))
+      }
+    },
+    editDriver(d) { this.openForm('edit', d) },
+    async deleteDriver(id) {
+      if (!confirm('Yakin hapus driver ini?')) return
+      try {
+        await axios.delete(`/drivers/${id}`)
+        alert('Driver dihapus!')
+        this.loadDrivers()
+      } catch (e) {
+        alert('Gagal hapus: ' + e.message)
+      }
+    }
+  },
+  mounted() { this.loadDrivers() }
 }
-
-const editItem = (item) => openForm('edit', item)
-const deleteItem = async (id) => {
-  if (!canCreate.value) return
-  if (!confirm('Yakin hapus driver ini?')) return
-  try {
-    await axios.delete(`/drivers/${id}`)
-    alert('Driver dihapus!')
-    await fetchItems()
-  } catch (error) {
-    alert('Gagal hapus: ' + error.message)
-  }
-}
-
-const exportExcel = async () => {
-  try {
-    const response = await axios.get('/export/drivers', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'drivers.xlsx')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (error) {
-    alert('Gagal export: ' + error.message)
-  }
-}
-
-onMounted(fetchItems)
 </script>
 
 <style scoped>
-/* ====== GAYA KONSISTEN ====== */
-.module-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-.module-header {
-  margin-bottom: 20px;
-}
-.module-header h2 {
-  font-size: 24px;
-  color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.module-header h2 i {
-  color: #1a4a7a;
-}
-.module-subtitle {
-  color: #6c757d;
-  font-size: 14px;
-  margin-top: 2px;
-}
-
-/* ===== TOOLBAR ===== */
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-  align-items: center;
-}
-.btn-add,
-.btn-refresh,
-.btn-export {
-  padding: 10px 22px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.25s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-.btn-add {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-.btn-add:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
-}
-.btn-refresh {
-  background: linear-gradient(135deg, #17a2b8, #138496);
-  color: white;
-}
-.btn-refresh:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(23, 162, 184, 0.3);
-}
-.btn-export {
-  background: linear-gradient(135deg, #007bff, #0069d9);
-  color: white;
-}
-.btn-export:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
-}
-
-/* ===== SEARCH ===== */
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  flex: 1;
-  max-width: 300px;
-}
-.search-wrapper:focus-within {
-  border-color: #1a4a7a;
-  box-shadow: 0 0 0 3px rgba(26, 74, 122, 0.12);
-}
-.search-icon {
-  color: #94a3b8;
-  margin-right: 8px;
-}
-.search-input {
-  border: none;
-  padding: 10px 0;
-  font-size: 14px;
-  width: 100%;
-  outline: none;
-  background: transparent;
-}
-
-/* ===== FORM ===== */
-.form-container {
-  background: white;
-  border-radius: 16px;
-  padding: 24px 28px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  margin: 16px 0 24px;
-}
-.form-container h3 {
-  font-size: 20px;
-  color: #0d2b45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 2px solid #e9ecef;
-  padding-bottom: 12px;
-  margin-bottom: 20px;
-}
-.form-container h3 i {
-  color: #1a4a7a;
-}
-.form-group {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.form-group label {
-  font-weight: 600;
-  color: #2d3748;
-  text-align: right;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-end;
-}
-.form-group label i {
-  color: #1a4a7a;
-  width: 20px;
-  text-align: center;
-}
-.required {
-  color: #dc3545;
-  margin-left: 2px;
-}
-.form-group input,
-.form-group select {
-  padding: 10px 14px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: border-color 0.2s;
-  background: white;
-  width: 100%;
-  box-sizing: border-box;
-}
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #1a4a7a;
-  box-shadow: 0 0 0 3px rgba(26, 74, 122, 0.12);
-}
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e9ecef;
-}
-.btn-save,
-.btn-cancel {
-  padding: 10px 28px;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-.btn-save {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-.btn-save:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
-}
-.btn-cancel {
-  background: #6c757d;
-  color: white;
-}
-.btn-cancel:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-}
-
-/* ===== TABLE ===== */
-.table-wrapper {
-  overflow-x: auto;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  padding: 4px 0;
-  margin-top: 16px;
-}
-.modern-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 700px;
-}
-.modern-table thead {
-  background: #f8fafc;
-  border-bottom: 2px solid #e9ecef;
-}
-.modern-table thead th {
-  padding: 14px 16px;
-  text-align: left;
-  font-weight: 700;
-  color: #2d3748;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.modern-table thead th i {
-  margin-right: 6px;
-  color: #1a4a7a;
-}
-.modern-table tbody tr {
-  border-bottom: 1px solid #f1f3f5;
-  transition: background 0.15s ease;
-}
-.modern-table tbody tr:hover {
-  background: #f8fafc;
-}
-.modern-table tbody td {
-  padding: 12px 16px;
-  color: #2d3748;
-  vertical-align: middle;
-}
-.modern-table tbody td:first-child {
-  font-weight: 600;
-  color: #6c757d;
-  width: 40px;
-  text-align: center;
-}
-.text-center {
-  text-align: center;
-}
-.action-cell {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* ===== BADGE ===== */
-.status-badge-active {
-  background: #28a745;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.status-badge-inactive {
-  background: #dc3545;
-  color: white;
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* ===== TOMBOL AKSI ===== */
-.btn-edit,
-.btn-delete {
-  border: none;
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-}
-.btn-edit {
-  background: #ffc107;
-  color: #212529;
-}
-.btn-edit:hover {
-  background: #e0a800;
-  transform: scale(1.08);
-}
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-.btn-delete:hover {
-  background: #c82333;
-  transform: scale(1.08);
-}
-
-/* ===== EMPTY MESSAGE ===== */
-.empty-message {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6c757d;
-  font-size: 16px;
-  background: #f8f9fa;
-  border-radius: 16px;
-}
-.empty-message i {
-  font-size: 40px;
-  display: block;
-  margin-bottom: 12px;
-  color: #dee2e6;
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-  .form-group {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .form-group label {
-    text-align: left;
-    justify-content: flex-start;
-  }
-  .modern-table {
-    font-size: 13px;
-    min-width: 500px;
-  }
-  .modern-table thead th,
-  .modern-table tbody td {
-    padding: 10px 12px;
-  }
-  .action-cell {
-    gap: 4px;
-  }
-}
+/* Gaya sama dengan VehicleList */
+.list-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.list-header h2 { font-size: 24px; font-weight: 700; color: #0d2b45; margin: 0; display: flex; align-items: center; gap: 8px; }
+.list-header h2 i { color: #2b6cb0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+.btn-primary { background: #2b6cb0; color: white; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 600; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-2px); }
+.btn-outline { background: white; color: #2d3748; border: 1.5px solid #e2e8f0; padding: 8px 18px; border-radius: 30px; font-weight: 500; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+.btn-outline:hover { border-color: #2b6cb0; background: #f7fafc; transform: translateY(-2px); }
+.form-card { background: white; border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+.form-card h4 { margin: 0 0 16px 0; font-size: 18px; color: #0d2b45; border-bottom: 2px solid #f1f3f5; padding-bottom: 10px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-weight: 600; font-size: 14px; color: #2d3748; margin-bottom: 4px; }
+.form-group .required { color: #e53e3e; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43,108,176,0.1); }
+.form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+.btn-save { background: #2b6cb0; color: white; border: none; padding: 8px 24px; border-radius: 30px; font-weight: 600; cursor: pointer; }
+.btn-save:hover { background: #1a4a7a; }
+.btn-cancel { background: #e2e8f0; color: #2d3748; border: none; padding: 8px 24px; border-radius: 30px; font-weight: 600; cursor: pointer; }
+.btn-cancel:hover { background: #cbd5e1; }
+.table-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead { background: #f7fafc; border-bottom: 2px solid #e2e8f0; }
+th, td { padding: 10px 14px; text-align: left; }
+tbody tr { border-bottom: 1px solid #f1f3f5; }
+tbody tr:hover { background: #f7fafc; }
+.text-center { text-align: center; }
+.empty-state { padding: 20px; color: #a0aec0; }
+.badge { display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.badge-available { background: #d1fae5; color: #065f46; }
+.badge-on_duty { background: #dbeafe; color: #1e40af; }
+.badge-off { background: #fef3c7; color: #92400e; }
+.btn-icon { background: transparent; border: none; padding: 4px 8px; color: #4a5568; cursor: pointer; transition: 0.2s; }
+.btn-icon:hover { color: #2b6cb0; }
+.btn-icon.danger:hover { color: #e53e3e; }
+.loading-state { text-align: center; padding: 40px; color: #4a5568; }
 </style>

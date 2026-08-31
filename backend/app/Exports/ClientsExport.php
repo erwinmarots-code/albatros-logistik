@@ -2,19 +2,33 @@
 
 namespace App\Exports;
 
-use App\Models\Client;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-
-class ClientsExport implements FromCollection, WithHeadings
+class ClientsExport extends BaseExport
 {
-    public function collection()
+    public function __construct($query)
     {
-        return Client::all(['name', 'phone', 'email', 'address', 'pic_name']);
+        parent::__construct($query, [
+            'ID',
+            'Nama Client',
+            'Alamat',
+            'Telepon',
+            'Email',
+            'NPWP',
+            'Cabang',
+            'Dibuat Pada'
+        ]);
     }
 
-    public function headings(): array
+    public function map($client): array
     {
-        return ['Nama Client', 'Telepon', 'Email', 'Alamat', 'PIC'];
+        return [
+            $client->id,
+            $client->name,
+            $client->address ?? '',
+            $client->phone ?? '',
+            $client->email ?? '',
+            $client->npwp ?? '',
+            $client->branch->name ?? '-',
+            $client->created_at->format('d/m/Y H:i'),
+        ];
     }
 }

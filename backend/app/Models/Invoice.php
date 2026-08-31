@@ -10,42 +10,37 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'shipping_project_id',
         'invoice_number',
-        'invoice_date',
-        'due_date',
+        'shipping_project_id',
+        'client_id',
         'total_amount',
+        'due_date',
         'status',
-        'notes',
-        'created_by',
+        'branch_id',
+    ];
+
+    protected $casts = [
+        'total_amount' => 'decimal:2',
+        'due_date' => 'date',
     ];
 
     public function shippingProject()
     {
-        return $this->belongsTo(ShippingProject::class);
+        return $this->belongsTo(ShippingProject::class, 'shipping_project_id');
     }
 
-    public function creator()
+    public function client()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(Client::class);
     }
 
-    /**
-     * Generate invoice number otomatis
-     * Format: INV-YYYYMMDD-XXXX
-     */
-    public static function generateInvoiceNumber()
+    public function branch()
     {
-        $prefix = 'INV-' . date('Ymd');
-        $last = self::where('invoice_number', 'LIKE', $prefix . '%')
-            ->orderBy('id', 'desc')
-            ->first();
-        if ($last) {
-            $lastNumber = intval(substr($last->invoice_number, -4));
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-        return $prefix . '-' . $newNumber;
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(InvoiceItem::class);
     }
 }

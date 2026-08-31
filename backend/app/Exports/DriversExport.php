@@ -2,19 +2,29 @@
 
 namespace App\Exports;
 
-use App\Models\Driver;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-
-class DriversExport implements FromCollection, WithHeadings
+class DriversExport extends BaseExport
 {
-    public function collection()
+    public function __construct($query)
     {
-        return Driver::all(['name', 'phone', 'license_number', 'address', 'status']);
+        parent::__construct($query, [
+            'ID',
+            'Nama Driver',
+            'No. SIM',
+            'Telepon',
+            'Status',
+            'Cabang'
+        ]);
     }
 
-    public function headings(): array
+    public function map($driver): array
     {
-        return ['Nama', 'Telepon', 'Nomor SIM', 'Alamat', 'Status'];
+        return [
+            $driver->id,
+            $driver->name,
+            $driver->license_number ?? '',
+            $driver->phone ?? '',
+            ucfirst($driver->status), // available, unavailable
+            $driver->branch->name ?? '-',
+        ];
     }
 }

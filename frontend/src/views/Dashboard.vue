@@ -1,147 +1,122 @@
 <template>
-  <div class="dashboard-page">
-    <!-- ===== HEADER DASHBOARD ===== -->
+  <div class="dashboard">
     <div class="page-header">
-      <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
-      <p class="greeting">Selamat bekerja, {{ userName }}!</p>
+      <h2><i class="fas fa-chart-pie"></i> Dashboard</h2>
+      <p class="greeting">Selamat datang, {{ user?.name || 'User' }}!</p>
       <div class="header-divider"></div>
     </div>
 
-    <!-- ===== UNTUK ADMIN FINANCE & SUPER ADMIN ===== -->
-    <template v-if="isFinanceOrSuperAdmin">
-      <DashboardStats />
-      <div class="chart-recent-grid">
-        <DashboardChart />
-        <RecentTransactions />
-      </div>
-    </template>
-
-    <!-- ===== UNTUK ADMIN PO & ADMIN TRANSPORT ===== -->
-    <div v-else class="non-finance-dashboard">
-      <!-- Statistik Cards -->
-      <div class="stats-grid">
-        <div v-for="stat in statsList" :key="stat.label" class="stat-card" :style="{ borderLeftColor: stat.color }">
-          <div class="stat-icon" :style="{ background: stat.color }">
-            <i :class="stat.icon"></i>
-          </div>
-          <div class="stat-content">
-            <span class="stat-number">{{ stat.value }}</span>
-            <span class="stat-label">{{ stat.label }}</span>
-          </div>
+    <div class="stats-grid">
+      <div class="stat-card" @click="goTo('clients')">
+        <i class="fas fa-building stat-icon"></i>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.clients }}</span>
+          <span class="stat-label">Client</span>
         </div>
       </div>
-
-      <!-- Quick Links -->
-      <div class="quick-links-grid">
-        <router-link
-          v-for="link in quickLinks"
-          :key="link.path"
-          :to="link.path"
-          class="quick-link"
-          :style="{ '--hover-color': link.color }"
-        >
-          <div class="quick-icon" :style="{ background: link.color }">
-            <i :class="link.icon"></i>
-          </div>
-          <span class="quick-label">{{ link.label }}</span>
-        </router-link>
+      <div class="stat-card" @click="goTo('projects')">
+        <i class="fas fa-folder-open stat-icon"></i>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.projects }}</span>
+          <span class="stat-label">Project</span>
+        </div>
       </div>
+      <div class="stat-card" @click="goTo('delivery-tasks')">
+        <i class="fas fa-tasks stat-icon"></i>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.tasks }}</span>
+          <span class="stat-label">Tugas</span>
+        </div>
+      </div>
+      <div class="stat-card" @click="goTo('vehicles')">
+        <i class="fas fa-car stat-icon"></i>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.vehicles }}</span>
+          <span class="stat-label">Kendaraan</span>
+        </div>
+      </div>
+      <div class="stat-card" @click="goTo('drivers')">
+        <i class="fas fa-user-tie stat-icon"></i>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.drivers }}</span>
+          <span class="stat-label">Driver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-section" v-if="recentActivities.length">
+      <h3><i class="fas fa-clock"></i> Aktivitas Terbaru</h3>
+      <ul>
+        <li v-for="act in recentActivities" :key="act.id">
+          <span class="act-icon"><i :class="act.icon"></i></span>
+          {{ act.message }}
+          <span class="act-time">{{ act.time }}</span>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from '../axios'
-import DashboardStats from '@/components/dashboard/DashboardStats.vue'
-import DashboardChart from '@/components/dashboard/DashboardChart.vue'
-import RecentTransactions from '@/components/dashboard/RecentTransactions.vue'
 
-const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
-const statsData = ref({
+const props = defineProps({
+  user: Object
+})
+
+const emit = defineEmits(['navigate'])
+
+const stats = ref({
+  clients: 0,
   projects: 0,
   tasks: 0,
   vehicles: 0,
-  drivers: 0,
+  drivers: 0
 })
 
-const userName = computed(() => {
-  const name = user.value?.name || 'User'
-  return name.replace(/^Admin\s+/i, '').trim()
-})
+const recentActivities = ref([])
 
-const isFinanceOrSuperAdmin = computed(() => {
-  const role = user.value?.role
-  return role === 'admin_finance' || role === 'super_admin'
-})
+const goTo = (page) => {
+  emit('navigate', page)
+}
 
-// ===== STATISTIK UNTUK CARD =====
-const statsList = computed(() => [
-  { label: 'Total Project', value: statsData.value.projects, icon: 'fas fa-folder-open', color: '#4f46e5' },
-  { label: 'Total Tugas', value: statsData.value.tasks, icon: 'fas fa-tasks', color: '#0ea5e9' },
-  { label: 'Total Kendaraan', value: statsData.value.vehicles, icon: 'fas fa-car', color: '#22c55e' },
-  { label: 'Total Driver', value: statsData.value.drivers, icon: 'fas fa-user-tie', color: '#eab308' },
-])
-
-// ===== FETCH STATISTIK DARI API =====
 const fetchStats = async () => {
   try {
     const res = await axios.get('/dashboard/stats')
     const data = res.data
-    statsData.value = {
+    stats.value = {
+      clients: data.total_clients || 0,
       projects: data.total_projects || 0,
       tasks: data.total_tasks || 0,
       vehicles: data.total_vehicles || 0,
-      drivers: data.total_drivers || 0,
+      drivers: data.total_drivers || 0
     }
+
+    // Contoh aktivitas (bisa diganti dengan data dari API)
+    recentActivities.value = [
+      { id: 1, icon: 'fas fa-plus-circle', message: 'Client baru ditambahkan', time: '5 menit lalu' },
+      { id: 2, icon: 'fas fa-truck', message: 'Tugas pengantaran selesai', time: '10 menit lalu' }
+    ]
   } catch (error) {
     console.error('Gagal memuat statistik:', error)
   }
 }
 
-// ===== QUICK LINKS BERDASARKAN ROLE =====
-const quickLinks = computed(() => {
-  const role = user.value?.role
-
-  if (role === 'admin_po') {
-    return [
-      { label: 'Project', path: '/projects', icon: 'fas fa-folder-open', color: '#4f46e5' },
-      { label: 'Tugas', path: '/delivery-tasks', icon: 'fas fa-tasks', color: '#0ea5e9' },
-      { label: 'Kendaraan', path: '/vehicles', icon: 'fas fa-car', color: '#22c55e' },
-      { label: 'Driver', path: '/drivers', icon: 'fas fa-user-tie', color: '#eab308' },
-      { label: 'Histori Perawatan', path: '/history', icon: 'fas fa-history', color: '#6b7280' },
-    ]
-  }
-
-  if (role === 'admin_transport') {
-    return [
-      { label: 'Project', path: '/projects', icon: 'fas fa-folder-open', color: '#4f46e5' },
-      { label: 'Tugas', path: '/delivery-tasks', icon: 'fas fa-tasks', color: '#0ea5e9' },
-      { label: 'Biaya', path: '/fuel-expenses', icon: 'fas fa-coins', color: '#eab308' },
-      { label: 'Kendaraan', path: '/vehicles', icon: 'fas fa-car', color: '#22c55e' },
-      { label: 'Driver', path: '/drivers', icon: 'fas fa-user-tie', color: '#6f42c1' },
-      { label: 'Pengajuan Perawatan', path: '/requests', icon: 'fas fa-tools', color: '#dc2626' },
-      { label: 'Histori Perawatan', path: '/history', icon: 'fas fa-history', color: '#6b7280' },
-    ]
-  }
-
-  return []
-})
-
-onMounted(() => {
-  if (!isFinanceOrSuperAdmin.value) {
-    fetchStats()
-  }
-})
+onMounted(fetchStats)
 </script>
 
 <style scoped>
-/* ====== GAYA SAMA SEPERTI SEBELUMNYA ====== */
-.dashboard-page { padding: 10px 0; }
+.dashboard {
+  padding: 10px 0;
+}
 
-.page-header { margin-bottom: 28px; }
-.page-header h1 {
-  font-size: 28px;
+.page-header {
+  margin-bottom: 28px;
+}
+
+.page-header h2 {
+  font-size: 26px;
   font-weight: 700;
   color: #0d2b45;
   margin: 0 0 4px 0;
@@ -149,27 +124,31 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
 }
-.page-header h1 i { color: #1a4a7a; }
+
+.page-header h2 i {
+  color: #1a4a7a;
+}
+
 .greeting {
   font-size: 18px;
   color: #4a5568;
   margin: 0 0 12px 0;
 }
+
 .header-divider {
   height: 3px;
   background: linear-gradient(90deg, #1a4a7a, #e6f0fa);
   border-radius: 4px;
-  margin-top: 8px;
   max-width: 200px;
 }
 
-/* ===== STATISTIK CARDS ===== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
   margin-bottom: 32px;
 }
+
 .stat-card {
   background: white;
   border-radius: 16px;
@@ -177,105 +156,90 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border-left: 4px solid #1a4a7a;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
+
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
 }
+
 .stat-icon {
+  font-size: 32px;
+  color: #1a4a7a;
   width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-  flex-shrink: 0;
+  text-align: center;
 }
-.stat-content {
+
+.stat-info {
   display: flex;
   flex-direction: column;
 }
-.stat-number {
-  font-size: 24px;
+
+.stat-value {
+  font-size: 28px;
   font-weight: 700;
   color: #0d2b45;
   line-height: 1.2;
 }
+
 .stat-label {
-  font-size: 13px;
+  font-size: 14px;
   color: #6c757d;
   font-weight: 500;
 }
 
-/* ===== QUICK LINKS ===== */
-.quick-links-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
+.recent-section {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
 }
-.quick-link {
+
+.recent-section h3 {
+  font-size: 18px;
+  color: #0d2b45;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.recent-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recent-section li {
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 24px 16px;
-  background: white;
-  border-radius: 16px;
-  text-decoration: none;
-  color: #0d2b45;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  transition: transform 0.2s, box-shadow 0.2s;
-  border-bottom: 3px solid transparent;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
 }
-.quick-link:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  border-bottom-color: var(--hover-color, #1a4a7a);
-}
-.quick-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
-}
-.quick-label {
-  font-weight: 600;
-  font-size: 14px;
+
+.act-icon {
+  color: #1a4a7a;
+  width: 24px;
   text-align: center;
 }
 
-/* ===== CHART & RECENT (Finance) ===== */
-.chart-recent-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-  margin-top: 20px;
-}
-@media (min-width: 1024px) {
-  .chart-recent-grid {
-    grid-template-columns: 2fr 1fr;
-  }
+.act-time {
+  margin-left: auto;
+  color: #6c757d;
+  font-size: 13px;
 }
 
-/* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .quick-links-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .quick-link {
-    padding: 16px 12px;
+  .stat-card {
+    padding: 16px;
   }
 }
 </style>

@@ -2,67 +2,43 @@
 
 namespace App\Exports;
 
-use App\Models\FinancialTransaction;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-
-class FinancialTransactionsExport implements FromCollection, WithHeadings, WithMapping
+class FinancialTransactionsExport extends BaseExport
 {
-    protected $from;
-    protected $to;
-
-    public function __construct($from = null, $to = null)
+    public function __construct($query)
     {
-        $this->from = $from;
-        $this->to = $to;
-    }
-
-    public function collection()
-    {
-        $query = FinancialTransaction::with(['vehicle', 'client', 'driver']);
-
-        if ($this->from) {
-            $query->whereDate('transaction_date', '>=', $this->from);
-        }
-        if ($this->to) {
-            $query->whereDate('transaction_date', '<=', $this->to);
-        }
-
-        return $query->orderBy('transaction_date', 'desc')->get();
-    }
-
-    public function headings(): array
-    {
-        return [
+        parent::__construct($query, [
             'ID',
             'Tanggal',
             'Tipe',
             'Kategori',
-            'Nominal (Rp)',
+            'Jumlah (Rp)',
             'Deskripsi',
+            'PO / Resi',
+            'No Maintenance',
+            'Status',
             'Kendaraan',
             'Driver',
             'Client',
-            'Status',
-            'Referensi',
-        ];
+            'Cabang'
+        ]);
     }
 
-    public function map($row): array
+    public function map($trx): array
     {
         return [
-            $row->id,
-            $row->transaction_date,
-            $row->type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-            $row->category,
-            number_format($row->amount, 0, ',', '.'),
-            $row->description ?? '-',
-            $row->vehicle->plate_number ?? '-',
-            $row->driver->name ?? '-',
-            $row->client->name ?? '-',
-            $row->status,
-            $row->reference_type ? $row->reference_type . ' #' . $row->reference_id : '-',
+            $trx->id,
+            $trx->transaction_date->format('d/m/Y'),
+            ucfirst($trx->type), // income / expense
+            $trx->category ?? '',
+            number_format($trx->amount ?? 0, 0, ',', '.'),
+            $trx->description ?? '',
+            $trx->po_number ?? '',
+            $trx->maintenance_number ?? '',
+            ucfirst($trx->status ?? ''),
+            $trx->vehicle->plate_number ?? '-',
+            $trx->driver->name ?? '-',
+            $trx->client->name ?? '-',
+            $trx->branch->name ?? '-',
         ];
     }
 }

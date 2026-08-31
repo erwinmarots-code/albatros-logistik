@@ -38,10 +38,16 @@ return [
     */
 
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
+    	'web' => [
+       	    'driver' => 'session',
+       	    'provider' => 'users',
+       ],
+
+    // Tambahkan ini:
+       'sanctum' => [
+           'driver' => 'sanctum',
+           'provider' => 'users',
+       ],
     ],
 
     /*
