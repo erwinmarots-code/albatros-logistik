@@ -14,10 +14,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // =============================================
-// HALAMAN UTAMA (welcome Laravel)
+// HALAMAN UTAMA – sekarang arahkan ke app.blade.php (Vue SPA)
 // =============================================
 Route::get('/', function () {
-    return view('welcome');
+    return view('app');
 });
 
 // =============================================
@@ -41,6 +41,13 @@ Route::get('/login', function () {
 })->name('login');
 
 // =============================================
+// 🔥 FALLBACK ROUTE – Semua halaman selain API akan diarahkan ke Vue SPA
+// =============================================
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');
+
+// =============================================
 // CATATAN PENTING
 // =============================================
 /*
@@ -49,5 +56,8 @@ Route::get('/login', function () {
 | 2. Route /login ditambahkan untuk menangani redirect jika ada
 |    middleware 'auth' yang mencoba redirect ke route login.
 | 3. Route ini akan mengembalikan JSON 401, bukan halaman login.
+| 4. Fallback route {any} akan menangani semua URL selain API,
+|    sehingga Vue Router di frontend dapat menangani routing SPA.
+| 5. Pastikan file resources/views/app.blade.php sudah ada.
 |-----------------------------------------------------------------------
 */
