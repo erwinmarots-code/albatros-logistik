@@ -9,12 +9,24 @@ return new class extends Migration
     public function up()
     {
         Schema::table('delivery_tasks', function (Blueprint $table) {
-            $table->string('receiver_name')->nullable()->after('client_id');
-            $table->text('receiver_address')->nullable()->after('receiver_name');
-            $table->string('receiver_phone')->nullable()->after('receiver_address');
-            $table->string('goods_description')->nullable()->after('receiver_phone');
-            $table->decimal('weight_kg', 10, 2)->nullable()->after('goods_description');
-            $table->integer('collie')->nullable()->after('weight_kg');
+            if (!Schema::hasColumn('delivery_tasks', 'receiver_name')) {
+                $table->string('receiver_name')->nullable();
+            }
+            if (!Schema::hasColumn('delivery_tasks', 'receiver_address')) {
+                $table->text('receiver_address')->nullable();
+            }
+            if (!Schema::hasColumn('delivery_tasks', 'receiver_phone')) {
+                $table->string('receiver_phone')->nullable();
+            }
+            if (!Schema::hasColumn('delivery_tasks', 'goods_description')) {
+                $table->text('goods_description')->nullable();
+            }
+            if (!Schema::hasColumn('delivery_tasks', 'weight_kg')) {
+                $table->decimal('weight_kg', 10, 2)->nullable();
+            }
+            if (!Schema::hasColumn('delivery_tasks', 'collie')) {
+                $table->integer('collie')->nullable();
+            }
         });
     }
 

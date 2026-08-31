@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('maintenance_requests', 'branch_id')) {
             Schema::table('maintenance_requests', function (Blueprint $table) {
-                $table->foreignId('branch_id')->nullable()->after('executed_at')->constrained('branches')->onDelete('set null');
+                $table->foreignId('branch_id')->nullable()->constrained('branches')->onDelete('set null');
             });
         }
     }

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('invoices', 'client_id')) {
             Schema::table('invoices', function (Blueprint $table) {
-                $table->foreignId('client_id')->after('shipping_project_id')->constrained('clients')->onDelete('cascade');
+                $table->foreignId('client_id')->nullable()->constrained()->nullOnDelete();
             });
         }
     }
