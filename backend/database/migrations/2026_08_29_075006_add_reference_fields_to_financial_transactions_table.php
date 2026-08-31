@@ -8,16 +8,12 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('financial_transactions', function (Blueprint $table) {
-            $table->string('reference_type')->nullable()->after('description');
-            $table->unsignedBigInteger('reference_id')->nullable()->after('reference_type');
-        });
+        // 🔥 Migrasi ini dinonaktifkan karena kolom reference_type dan reference_id sudah ada di create table.
+        // Tidak ada operasi yang dilakukan untuk menghindari error duplicate column.
     }
 
     public function down()
     {
-        Schema::table('financial_transactions', function (Blueprint $table) {
-            $table->dropColumn(['reference_type', 'reference_id']);
-        });
+        // Tidak ada operasi
     }
 };
