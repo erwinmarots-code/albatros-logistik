@@ -6,17 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
-        Schema::table('delivery_tasks', function (Blueprint $table) {
-            $table->string('no_resi')->unique()->nullable()->after('project_id');
-        });
+        // Cek apakah kolom 'no_resi' sudah ada, jika belum tambahkan
+        if (!Schema::hasColumn('delivery_tasks', 'no_resi')) {
+            Schema::table('delivery_tasks', function (Blueprint $table) {
+                $table->string('no_resi')->nullable()->after('id');
+            });
+        }
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
-        Schema::table('delivery_tasks', function (Blueprint $table) {
-            $table->dropColumn('no_resi');
-        });
+        // Hapus kolom jika ada
+        if (Schema::hasColumn('delivery_tasks', 'no_resi')) {
+            Schema::table('delivery_tasks', function (Blueprint $table) {
+                $table->dropColumn('no_resi');
+            });
+        }
     }
 };
