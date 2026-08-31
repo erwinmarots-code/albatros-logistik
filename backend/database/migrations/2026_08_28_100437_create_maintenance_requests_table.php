@@ -12,9 +12,10 @@ return new class extends Migration
             Schema::create('maintenance_requests', function (Blueprint $table) {
                 $table->id();
                 $table->string('request_code')->unique()->nullable();
-                $table->foreignId('vehicle_id')->constrained();
-                $table->foreignId('driver_id')->nullable()->constrained();
-                $table->foreignId('schedule_id')->nullable()->constrained('maintenance_schedules');
+                $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
+                $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+                // 🔥 Hapus foreign key ke maintenance_schedules (tambahkan nanti)
+                $table->unsignedBigInteger('schedule_id')->nullable()->after('driver_id');
                 $table->date('request_date');
                 $table->text('description');
                 $table->enum('service_type', ['oil_change', 'tire_replacement', 'sparepart', 'general', 'other'])->default('general');
@@ -22,13 +23,13 @@ return new class extends Migration
                 $table->decimal('actual_cost', 15, 2)->nullable();
                 $table->enum('urgency', ['low', 'medium', 'high'])->default('medium');
                 $table->enum('status', ['pending', 'approved', 'rejected', 'done'])->default('pending');
-                $table->foreignId('approved_by')->nullable()->constrained('users');
+                $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamp('approved_at')->nullable();
                 $table->boolean('is_executed')->default(false);
-                $table->foreignId('executed_by')->nullable()->constrained('users');
+                $table->foreignId('executed_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamp('executed_at')->nullable();
                 $table->foreignId('created_by')->constrained('users');
-                $table->foreignId('branch_id')->constrained();
+                $table->foreignId('branch_id')->constrained('branches');
                 $table->timestamps();
             });
         }

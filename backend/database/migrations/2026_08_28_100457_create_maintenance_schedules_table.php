@@ -11,7 +11,7 @@ return new class extends Migration
         if (!Schema::hasTable('maintenance_schedules')) {
             Schema::create('maintenance_schedules', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('vehicle_id')->constrained();
+                $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
                 $table->enum('type', ['oil_change', 'tire_replacement', 'sparepart', 'general'])->default('general');
                 $table->text('description')->nullable();
                 $table->date('last_date')->nullable();
