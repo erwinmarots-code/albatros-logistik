@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Albatros Logistik</title>
-    @vite('src/main.js')
+    <link rel="stylesheet" href="{{ asset('build/assets/main-BkaFKvsj.css') }}">
 </head>
 <body>
     <div id="app"></div>
-    @vite('src/main.js')
+    <script type="module" src="{{ asset('build/assets/main-DW31NBAo.js') }}"></script>
 </body>
 </html>
