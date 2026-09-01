@@ -1,3 +1,5 @@
+console.log('🔥 main.js mulai dijalankan')
+
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
@@ -10,6 +12,14 @@ import axios from './axios'
 const app = createApp(App)
 
 // ============================================================
+// ERROR HANDLER UNTUK MENANGKAP ERROR DI VUE
+// ============================================================
+
+app.config.errorHandler = (err, vm, info) => {
+  console.error('❌ Vue error:', err, info)
+}
+
+// ============================================================
 // PASANG ROUTER
 // ============================================================
 
@@ -20,6 +30,8 @@ app.use(router)
 // ============================================================
 
 app.mount('#app')
+
+console.log('✅ Vue app mounted!')
 
 // ============================================================
 // CEK TOKEN SAAT APLIKASI DIMULAI
