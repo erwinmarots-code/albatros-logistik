@@ -1,8 +1,8 @@
 import axios from 'axios'
 
-// Buat instance axios dengan base URL backend
+// Buat instance axios dengan base URL yang benar (relatif)
 const instance = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: '/api', // 🔥 Ganti dari 'http://localhost:8000/api'
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
