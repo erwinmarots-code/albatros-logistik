@@ -15,7 +15,7 @@ return new class extends Migration
                 $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
                 $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
                 // 🔥 Hapus foreign key ke maintenance_schedules (tambahkan nanti)
-                $table->unsignedBigInteger('schedule_id')->nullable()->after('driver_id');
+                $table->unsignedBigInteger('schedule_id')->nullable();
                 $table->date('request_date');
                 $table->text('description');
                 $table->enum('service_type', ['oil_change', 'tire_replacement', 'sparepart', 'general', 'other'])->default('general');
