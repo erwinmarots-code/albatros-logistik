@@ -3,7 +3,7 @@
     <div class="login-card">
       <!-- 🔥 LOGO DIPERBESAR -->
       <div class="login-logo">
-        <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" />
+      <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" />
         <h2>Albatros Logistik</h2>
         <p>Sistem Manajemen Logistik</p>
       </div>
@@ -75,9 +75,9 @@ export default {
         const data = response.data
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-
-        this.router.push('/dashboard')
-        window.location.reload()
+        
+        // 🔥 Redirect dengan force reload 
+        window.location.href = '/dashboard'
       } catch (error) {
         if (error.response && error.response.data) {
           this.errorMessage = error.response.data.message || 'Login gagal'

@@ -7,7 +7,7 @@
         <p>Selamat datang, {{ user?.name || 'User' }}</p>
       </div>
       <div class="logo-container">
-        <img src="/images/albatros_logo.jpg" alt="Albatros Logistik" class="logo" />
+        <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" class="logo" />
       </div>
     </div>
 
