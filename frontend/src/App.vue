@@ -133,18 +133,18 @@ export default {
     // 🔥 LOGOUT – LANGSUNG KE LANDING PAGE TANPA INTERFERENSI
     // =============================================================
     const logout = () => {
-   // Hapus semua data session
-   localStorage.removeItem('token')
-   localStorage.removeItem('user')
-   sessionStorage.clear()
-   token.value = null
-   user.value = {}
+    // Hapus semua data session
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.clear()
+    token.value = null
+    user.value = {}
 
-   // Beri jeda 100ms agar proses lain selesai, lalu redirect ke landing page
-   setTimeout(() => {
-      window.location.replace('/')
-   }, 100)
-  }
+    // Navigasi ke landing page melalui router, lalu reload
+    router.push('/').then(() => {
+      window.location.reload()
+     })
+    }
 
     const handlePasswordSuccess = (message) => {
       alert(message || 'Password berhasil diubah!')
