@@ -6,25 +6,13 @@
     <title>Albatros Logistik</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
-    @php
-        $manifestPath = public_path('assets/manifest.json');
-        $manifest = [];
-        if (file_exists($manifestPath)) {
-            $manifest = json_decode(file_get_contents($manifestPath), true);
-        }
-        $entry = $manifest['src/main.js'] ?? null;
-        $cssFile = $entry['css'][0] ?? null;
-        $jsFile = $entry['file'] ?? null;
-    @endphp
-
-    @if ($cssFile)
-        <link rel="stylesheet" href="{{ asset('assets/' . $cssFile) }}">
-    @endif
+    {{-- 🔥 LOAD CSS UTAMA --}}
+    <link rel="stylesheet" href="{{ asset('assets/main-C9lmkiG4.css') }}">
 </head>
 <body>
     <div id="app"></div>
-    @if ($jsFile)
-        <script type="module" src="{{ asset('assets/' . $jsFile) }}"></script>
-    @endif
+    
+    {{-- 🔥 LOAD JS UTAMA --}}
+    <script type="module" src="{{ asset('assets/main-CXltJDqU.js') }}"></script>
 </body>
 </html>
