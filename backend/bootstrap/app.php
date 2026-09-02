@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\CheckRole;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,15 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Daftarkan alias middleware
-        $middleware->alias([
-            'role' => CheckRole::class,
-        ]);
-
-        // Jika kamu juga perlu menonaktifkan CSRF untuk route API (opsional)
-        $middleware->validateCsrfTokens(except: [
-            '/api/*',
-        ]);
+        // 🔥 KONFIGURASI REDIRECT GUEST
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->path() === '/' || $request->path() === 'login') {
+                return null; // Jangan redirect untuk halaman landing dan login
+            }
+            return '/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
