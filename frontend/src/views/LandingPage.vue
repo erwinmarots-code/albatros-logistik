@@ -19,7 +19,7 @@
         <div class="hero-content">
           <h1>Manajemen Logistik <br /><span>Modern & Efisien</span></h1>
           <p class="hero-description">
-            Kelola seluruh operasional logistik Albatros Makassar dalam satu platform terintegrasi.
+            Kelola seluruh operasional logistik Albatros dalam satu platform terintegrasi.
             Mulai dari kendaraan, driver, pengiriman, hingga keuangan.
           </p>
           <div class="hero-buttons">
@@ -70,7 +70,7 @@
       <div class="container">
         <div class="cta-content">
           <h2>Siap Mengelola Logistik Lebih Baik?</h2>
-          <p>Gabung sekarang dan rasakan kemudahan mengelola armada dan pengiriman.</p>
+          <p>Kemudahan mengelola armada dan pengiriman.</p>
           <button @click="goToLogin" class="btn-primary btn-large">
             <i class="fas fa-rocket"></i> Mulai Sekarang
           </button>
