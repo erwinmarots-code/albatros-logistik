@@ -8,6 +8,6 @@
 </head>
 <body>
     <div id="app"></div>
-    <script type="module" src="/assets/main-BRTph82A.js"></script>
+    <script type="module" src="/assets/main-DmUv1tkn.js"></script>
 </body>
 </html>
