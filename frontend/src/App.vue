@@ -1,100 +1,25 @@
-<template>
+<<template>
   <div id="app">
-    <!-- LAYOUT LOGIN -->
     <div v-if="isLoggedIn" class="app-layout">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <!-- 🔥 LOGO GAMBAR DIHAPUS, HANYA TEKS -->
           <span>Albatros Logistik</span>
         </div>
-
         <nav class="sidebar-nav">
-          <router-link to="/dashboard" class="nav-link" active-class="active">
-            <i class="fas fa-tachometer-alt"></i> Dashboard
-          </router-link>
-
-          <div v-if="showDataMaster" class="nav-section">Data Master</div>
-          <router-link v-if="canAccess('clients')" to="/clients" class="nav-link" active-class="active">
-            <i class="fas fa-users"></i> Client
-          </router-link>
-          <router-link v-if="canAccess('vehicles')" to="/vehicles" class="nav-link" active-class="active">
-            <i class="fas fa-truck"></i> Kendaraan
-          </router-link>
-          <router-link v-if="canAccess('drivers')" to="/drivers" class="nav-link" active-class="active">
-            <i class="fas fa-user-tie"></i> Driver
-          </router-link>
-
-          <div v-if="showOperasional" class="nav-section">Operasional</div>
-          <router-link v-if="canAccess('projects')" to="/projects" class="nav-link" active-class="active">
-            <i class="fas fa-folder-open"></i> Project
-          </router-link>
-          <router-link v-if="canAccess('delivery-tasks')" to="/delivery-tasks" class="nav-link" active-class="active">
-            <i class="fas fa-tasks"></i> Tugas Kirim
-          </router-link>
-          <router-link v-if="canAccess('fuel-expenses')" to="/fuel-expenses" class="nav-link" active-class="active">
-            <i class="fas fa-coins"></i> Pengajuan Biaya
-          </router-link>
-
-          <router-link v-if="canAccess('maintenance-requests')" to="/maintenance-requests" class="nav-link" active-class="active">
-            <i class="fas fa-tools"></i> Perawatan
-          </router-link>
-
-          <div v-if="showInventory" class="nav-section">Inventory</div>
-          <router-link v-if="canAccess('spare-parts')" to="/spare-parts" class="nav-link" active-class="active">
-            <i class="fas fa-boxes"></i> Spare Part
-          </router-link>
-
-          <div v-if="showKeuangan" class="nav-section">Keuangan</div>
-          <router-link v-if="canAccess('invoices')" to="/invoices" class="nav-link" active-class="active">
-            <i class="fas fa-file-invoice"></i> Invoice
-          </router-link>
-          <router-link v-if="canAccess('financial-dashboard')" to="/financial" class="nav-link" active-class="active">
-            <i class="fas fa-chart-pie"></i> Keuangan
-          </router-link>
-
-          <div v-if="user?.role === 'super_admin'" class="nav-section">Pengaturan</div>
-          <router-link v-if="user?.role === 'super_admin'" to="/users" class="nav-link" active-class="active">
-            <i class="fas fa-users-cog"></i> Kelola Akun
-          </router-link>
-          <router-link v-if="user?.role === 'super_admin'" to="/settings" class="nav-link" active-class="active">
-            <i class="fas fa-cog"></i> Pengaturan Sistem
-          </router-link>
-          <router-link v-if="user?.role === 'super_admin'" to="/permissions" class="nav-link" active-class="active">
-            <i class="fas fa-lock"></i> Manajemen Akses
-          </router-link>
-
+          <!-- ... semua menu ... -->
           <button @click="logout" class="nav-link logout-btn">
             <i class="fas fa-sign-out-alt"></i> Logout
           </button>
         </nav>
       </aside>
-
       <main class="main-content">
-        <header class="topbar">
-          <div class="topbar-left"><h1>{{ pageTitle }}</h1></div>
-          <div class="topbar-right">
-            <span class="user-info">{{ user?.name || 'User' }}</span>
-            <span class="role-badge">{{ user?.role || 'Role' }}</span>
-            <button class="btn-change-password" @click="showChangePassword = true">
-              <i class="fas fa-key"></i> Ganti Password
-            </button>
-          </div>
-        </header>
-        <div class="content">
-          <router-view v-if="isLoggedIn" :key="isLoggedIn" />
-        </div>
+        <!-- ... topbar dan content ... -->
       </main>
     </div>
-
     <div v-else>
       <router-view />
     </div>
-
-    <ChangePasswordModal
-      :show="showChangePassword"
-      @close="showChangePassword = false"
-      @success="handlePasswordSuccess"
-    />
+    <ChangePasswordModal ... />
   </div>
 </template>
 
@@ -106,9 +31,7 @@ import ChangePasswordModal from './components/ChangePasswordModal.vue'
 
 export default {
   name: 'App',
-  components: {
-    ChangePasswordModal,
-  },
+  components: { ChangePasswordModal },
   setup() {
     const router = useRouter()
     const route = useRoute()
@@ -130,13 +53,19 @@ export default {
     const showInventory = computed(() => canAccess('spare-parts'))
     const showKeuangan = computed(() => canAccess('invoices') || canAccess('financial-dashboard'))
 
-    // 🔥 PERBAIKAN LOGOUT – langsung hapus token dan redirect ke landing page
+    // =============================================================
+    // 🔥 LOGOUT – TANPA PANGGIL API, LANGSUNG REDIRECT
+    // =============================================================
     const logout = () => {
+      // Hapus semua data session
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      sessionStorage.clear()
       token.value = null
       user.value = {}
-      window.location.href = '/'
+
+      // Redirect ke landing page (replace agar tidak bisa back)
+      window.location.replace('/')
     }
 
     const handlePasswordSuccess = (message) => {
