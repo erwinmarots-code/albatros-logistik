@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Albatros Logistik</title>
-    <link rel="stylesheet" href="/assets/main-DDfHaFVJ.css">
+    <link rel="stylesheet" href="/app.css">
 </head>
 <body>
     <div id="app"></div>
-    <script type="module" src="/assets/main-DbhuzUvh.js"></script>
+    <script type="module" src="/app.js"></script>
 </body>
 </html>
