@@ -2,7 +2,8 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-logo">
-        <!-- 🔥 LOGO DIHAPUS SEMENTARA -->
+        <!-- 🔥 LOGO 3x LIPAT (60px → 180px) -->
+        <img src="/images/albatros_logo.jpg" alt="Albatros Logistik" class="logo-img" />
         <h2>Albatros Logistik</h2>
         <p>Sistem Manajemen Logistik</p>
       </div>
@@ -108,6 +109,13 @@ export default {
   text-align: center;
   margin-bottom: 28px;
 }
+/* 🔥 LOGO 3x LIPAT (60px → 180px) */
+.login-logo .logo-img {
+  height: 180px;
+  width: auto;
+  margin-bottom: 12px;
+  object-fit: contain;
+}
 .login-logo h2 {
   font-size: 22px;
   font-weight: 700;
@@ -186,6 +194,9 @@ export default {
   }
   .login-logo h2 {
     font-size: 18px;
+  }
+  .login-logo .logo-img {
+    height: 120px; /* responsive */
   }
 }
 </style>

@@ -3,11 +3,11 @@
     <nav class="navbar">
       <div class="container">
         <div class="logo">
-          <i class="fas fa-ship"></i>
-          <span>Albatros Makassar</span>
+          <!-- 🔥 LOGO GAMBAR SAJA, TANPA TEKS -->
+          <img src="/images/albatros_logo.jpg" alt="Albatros Logistik" class="logo-img" />
         </div>
         <div class="nav-actions">
-          <button @click="$emit('login-click')" class="btn-login-nav">
+          <button @click="goToLogin" class="btn-login-nav">
             <i class="fas fa-sign-in-alt"></i> Login
           </button>
         </div>
@@ -23,7 +23,7 @@
             Mulai dari kendaraan, driver, pengiriman, hingga keuangan.
           </p>
           <div class="hero-buttons">
-            <button @click="$emit('login-click')" class="btn-primary">
+            <button @click="goToLogin" class="btn-primary">
               <i class="fas fa-rocket"></i> Mulai Sekarang
             </button>
             <a href="#features" class="btn-outline">
@@ -31,10 +31,8 @@
             </a>
           </div>
         </div>
-        <!-- 🔥 TIDAK ADA GAMBAR DI SINI -->
-        <div class="hero-placeholder">
-          <i class="fas fa-ship" style="font-size:80px; color:#1a4a7a;"></i>
-          <p style="color:#4a5568; margin-top:12px;">Solusi Logistik Terintegrasi</p>
+        <div class="hero-image">
+          <img src="/images/landing_page.png" alt="Ilustrasi Logistik" class="hero-img" />
         </div>
       </div>
     </section>
@@ -73,7 +71,7 @@
         <div class="cta-content">
           <h2>Siap Mengelola Logistik Lebih Baik?</h2>
           <p>Gabung sekarang dan rasakan kemudahan mengelola armada dan pengiriman.</p>
-          <button @click="$emit('login-click')" class="btn-primary btn-large">
+          <button @click="goToLogin" class="btn-primary btn-large">
             <i class="fas fa-rocket"></i> Mulai Sekarang
           </button>
         </div>
@@ -85,7 +83,7 @@
         <div class="footer-content">
           <div class="footer-brand">
             <i class="fas fa-ship"></i>
-            <span>Albatros Makassar</span>
+            <span>Albatros Logistik</span>
             <p>Sistem Manajemen Logistik &copy; 2026</p>
           </div>
           <div class="footer-links">
@@ -101,8 +99,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-defineEmits(['login-click'])
+const router = useRouter()
+
+const goToLogin = () => {
+  router.push('/login')
+}
 
 const features = ref([
   {
@@ -183,13 +186,11 @@ const stats = ref([
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 22px;
-  font-weight: 700;
-  color: #0d2b45;
 }
-.logo i {
-  color: #1a4a7a;
+.logo-img {
+  height: 120px;
+  width: auto;
+  object-fit: contain;
 }
 .btn-login-nav {
   background: #1a4a7a;
@@ -279,15 +280,15 @@ const stats = ref([
   color: white;
   transform: translateY(-3px);
 }
-.hero-placeholder {
+.hero-image {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  background: #e6f0fa;
+  align-items: center;
+}
+.hero-img {
+  max-width: 100%;
+  height: auto;
   border-radius: 20px;
-  padding: 60px 20px;
-  min-height: 300px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.08);
 }
 
@@ -451,7 +452,7 @@ const stats = ref([
   }
   .hero-buttons { justify-content: center; }
   .hero-content h1 { font-size: 32px; }
-  .hero-placeholder { min-height: 200px; padding: 40px 20px; }
+  .hero-image { margin-top: 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .footer-content { flex-direction: column; text-align: center; }
 }
@@ -459,5 +460,6 @@ const stats = ref([
   .navbar .container { flex-direction: column; gap: 12px; }
   .btn-login-nav { width: 100%; justify-content: center; }
   .features-grid { grid-template-columns: 1fr; }
+  .logo-img { height: 80px; }
 }
 </style>

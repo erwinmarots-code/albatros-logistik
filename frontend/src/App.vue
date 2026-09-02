@@ -117,7 +117,6 @@ export default {
     const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
     const showChangePassword = ref(false)
 
-    // isLoggedIn
     const isLoggedIn = computed(() => !!token.value && token.value.length > 0)
 
     const canAccess = (menu) => {

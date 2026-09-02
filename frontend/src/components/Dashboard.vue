@@ -5,7 +5,10 @@
         <h1>Dashboard</h1>
         <p>Selamat datang, {{ user?.name || 'User' }}</p>
       </div>
-      <!-- 🔥 LOGO DIHAPUS SEMENTARA -->
+      <!-- 🔥 LOGO 3x LIPAT (48px → 144px) -->
+      <div class="header-logo">
+        <img src="/images/albatros_logo.jpg" alt="Albatros Logistik" class="header-logo-img" />
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -381,6 +384,12 @@ export default {
   color: #6b7280;
   margin: 4px 0 0 0;
 }
+/* 🔥 LOGO 3x LIPAT (48px → 144px) */
+.header-logo-img {
+  height: 144px;
+  width: auto;
+  object-fit: contain;
+}
 
 .stats-grid {
   display: grid;
@@ -612,6 +621,14 @@ export default {
 @media (max-width: 768px) {
   .finance-summary {
     grid-template-columns: 1fr 1fr;
+  }
+  .header-logo-img {
+    height: 96px;
+  }
+}
+@media (max-width: 480px) {
+  .header-logo-img {
+    height: 72px;
   }
 }
 </style>

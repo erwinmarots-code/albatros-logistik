@@ -4,13 +4,15 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
+    outDir: 'dist',                    // Build ke folder dist di dalam frontend
+    emptyOutDir: true,
+    manifest: true,                    // Hasilkan manifest.json untuk mapping
     rollupOptions: {
       input: 'src/main.js',
-      external: (id) => {
-        // 🔥 ABAIKAN SEMUA FILE DI FOLDER public/images/
-        return id.startsWith('/images/')
+      output: {
+        entryFileNames: 'assets/js/[name]-[hash].js',
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        assetFileNames: 'assets/css/[name]-[hash].[ext]'
       }
     }
   },
