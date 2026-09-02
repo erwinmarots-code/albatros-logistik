@@ -1,9 +1,9 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <!-- 🔥 LOGO DIPERBESAR -->
+      <!-- 🔥 LOGO VIA CSS (BUKAN TAG <img>) -->
       <div class="login-logo">
-      <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" />
+        <div class="logo-image"></div>
         <h2>Albatros Logistik</h2>
         <p>Sistem Manajemen Logistik</p>
       </div>
@@ -46,7 +46,6 @@
 
 <script>
 import axios from '../axios'
-import { useRouter } from 'vue-router'
 
 export default {
   name: 'Login',
@@ -57,10 +56,6 @@ export default {
       loading: false,
       errorMessage: '',
     }
-  },
-  setup() {
-    const router = useRouter()
-    return { router }
   },
   methods: {
     async handleLogin() {
@@ -75,8 +70,7 @@ export default {
         const data = response.data
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        
-        // 🔥 Redirect dengan force reload 
+
         window.location.href = '/dashboard'
       } catch (error) {
         if (error.response && error.response.data) {
@@ -111,16 +105,17 @@ export default {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-/* 🔥 LOGO – 1.5x LEBAR BESAR */
+/* 🔥 LOGO VIA CSS BACKGROUND */
 .login-logo {
   text-align: center;
   margin-bottom: 28px;
 }
-.login-logo img {
-  height: 120px; /* 🔥 dari 80px menjadi 120px (1.5x) */
-  width: auto;
-  object-fit: contain;
-  margin-bottom: 12px;
+.login-logo .logo-image {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 12px auto;
+  background: url('/images/albatros_logo_new.jpg') no-repeat center;
+  background-size: contain;
 }
 .login-logo h2 {
   font-size: 22px;
@@ -198,8 +193,9 @@ export default {
   .login-card {
     padding: 28px 20px;
   }
-  .login-logo img {
-    height: 80px; /* 🔥 di mobile tetap 80px (lebih proporsional) */
+  .login-logo .logo-image {
+    height: 80px;
+    width: 80px;
   }
   .login-logo h2 {
     font-size: 18px;

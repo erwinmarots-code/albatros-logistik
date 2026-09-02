@@ -7,7 +7,7 @@
         <p>Selamat datang, {{ user?.name || 'User' }}</p>
       </div>
       <div class="logo-container">
-        <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" class="logo" />
+        <div class="logo-image"></div>
       </div>
     </div>
 
@@ -394,11 +394,12 @@ export default {
 .logo-container {
   flex-shrink: 0;
 }
-.logo {
+.logo-image {
   height: 60px;
-  width: auto;
-  object-fit: contain;
-  background: white;
+  width: 120px;
+  background: url('/images/albatros_logo_new.jpg') no-repeat center;
+  background-size: contain;
+  background-color: white;
   padding: 6px 12px;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
