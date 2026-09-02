@@ -15,13 +15,12 @@ class MasterDataSeeder extends Seeder
 {
     public function run()
     {
-        // Jangan gunakan DB::statement di sini
-
-        // Buat cabang
+        // ============================================
+        // 1. BRANCHES (Hanya UPG dan JKT)
+        // ============================================
         $upg = Branch::create([
             'code' => 'UPG',
             'name' => 'Cabang Makassar',
-            'city' => 'Makassar',
             'address' => 'Jl. Urip Sumoharjo No. 88',
             'phone' => '0411-123456',
         ]);
@@ -29,21 +28,23 @@ class MasterDataSeeder extends Seeder
         $jkt = Branch::create([
             'code' => 'JKT',
             'name' => 'Cabang Jakarta',
-            'city' => 'Jakarta',
             'address' => 'Jl. Sudirman No. 45',
             'phone' => '021-789012',
         ]);
 
-        // Buat user super admin
+        // ============================================
+        // 2. USERS
+        // ============================================
+        // Super Admin – branch_id = null (bisa akses semua)
         $superAdmin = User::create([
             'name' => 'Super Admin',
-            'email' => 'superadmin@albatros.com',
+            'email' => 'admin@albatros.com',
             'password' => Hash::make('password123'),
             'role' => 'super_admin',
             'branch_id' => null,
         ]);
 
-        // Buat user admin Makassar
+        // Admin Makassar
         $adminUpg = User::create([
             'name' => 'Admin Makassar',
             'email' => 'admin.upg@albatros.com',
@@ -52,7 +53,7 @@ class MasterDataSeeder extends Seeder
             'branch_id' => $upg->id,
         ]);
 
-        // Buat user admin Jakarta
+        // Admin Jakarta
         $adminJkt = User::create([
             'name' => 'Admin Jakarta',
             'email' => 'admin.jkt@albatros.com',
@@ -61,14 +62,14 @@ class MasterDataSeeder extends Seeder
             'branch_id' => $jkt->id,
         ]);
 
-        // Buat client
+        // ============================================
+        // 3. CLIENTS (Hapus pic_name & npwp jika tidak ada di tabel)
+        // ============================================
         $clientUpg = Client::create([
             'name' => 'PT. ABC Express',
             'email' => 'abc@abc.co.id',
             'phone' => '0411-411411',
             'address' => 'Jl. Ir. Soetami No. 12, Makassar',
-            'pic_name' => 'Rina',
-            'npwp' => '4456652552144521',
             'branch_id' => $upg->id,
         ]);
 
@@ -77,18 +78,17 @@ class MasterDataSeeder extends Seeder
             'email' => 'xyz@xyz.co.id',
             'phone' => '021-789123',
             'address' => 'Jl. Gatot Subroto No. 88, Jakarta',
-            'pic_name' => 'Andi',
-            'npwp' => '5566778899001234',
             'branch_id' => $jkt->id,
         ]);
 
-        // Buat kendaraan
+        // ============================================
+        // 4. VEHICLES (Hapus fuel_type jika tidak ada)
+        // ============================================
         Vehicle::create([
             'plate_number' => 'DD 1234 AB',
             'brand' => 'Daihatsu',
             'model' => 'Granmax',
             'year' => 2020,
-            'fuel_type' => 'bensin',
             'status' => 'available',
         ]);
 
@@ -97,11 +97,12 @@ class MasterDataSeeder extends Seeder
             'brand' => 'Mitsubishi',
             'model' => 'Colt Diesel',
             'year' => 2021,
-            'fuel_type' => 'diesel',
             'status' => 'available',
         ]);
 
-        // Buat driver
+        // ============================================
+        // 5. DRIVERS
+        // ============================================
         Driver::create([
             'name' => 'Adi R',
             'phone' => '085285285252',
@@ -118,7 +119,9 @@ class MasterDataSeeder extends Seeder
             'status' => 'available',
         ]);
 
-        // Buat project Makassar
+        // ============================================
+        // 6. SHIPPING PROJECTS
+        // ============================================
         ShippingProject::create([
             'client_id' => $clientUpg->id,
             'branch_id' => $upg->id,
@@ -141,7 +144,6 @@ class MasterDataSeeder extends Seeder
             'created_by' => $adminUpg->id,
         ]);
 
-        // Buat project Jakarta
         ShippingProject::create([
             'client_id' => $clientJkt->id,
             'branch_id' => $jkt->id,
@@ -164,6 +166,6 @@ class MasterDataSeeder extends Seeder
             'created_by' => $adminJkt->id,
         ]);
 
-        $this->command->info('Master data seeding completed!');
+        $this->command->info('✅ Master data seeding completed!');
     }
 }
