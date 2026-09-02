@@ -129,13 +129,18 @@ export default {
     const showInventory = computed(() => canAccess('spare-parts'))
     const showKeuangan = computed(() => canAccess('invoices') || canAccess('financial-dashboard'))
 
-    // 🔥 LOGOUT – LANGSUNG REDIRECT KE LANDING PAGE
+    // =============================================================
+    // 🔥 LOGOUT – LANGSUNG KE LANDING PAGE TANPA INTERFERENSI
+    // =============================================================
     const logout = () => {
+      // Hapus semua data session
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       sessionStorage.clear()
       token.value = null
       user.value = {}
+
+      // Redirect ke landing page (replace agar tidak bisa back)
       window.location.replace('/')
     }
 

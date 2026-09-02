@@ -1,6 +1,5 @@
 import axios from 'axios'
 
-// Buat instance axios dengan base URL relatif
 const instance = axios.create({
   baseURL: '/api',
   headers: {
@@ -11,16 +10,13 @@ const instance = axios.create({
 })
 
 // ============================================================
-// INTERCEPTOR REQUEST: Tambahkan token ke setiap request
+// INTERCEPTOR REQUEST: Tambahkan token
 // ============================================================
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      console.log('✅ Authorization header set:', config.headers.Authorization)
-    } else {
-      console.warn('⚠️ No token found!')
     }
     return config
   },
@@ -28,26 +24,15 @@ instance.interceptors.request.use(
 )
 
 // ============================================================
-// INTERCEPTOR RESPONSE: Handle error 401 (Unauthorized)
+// INTERCEPTOR RESPONSE: Jangan redirect otomatis
 // ============================================================
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Jika error 401 dan BUKAN request ke /logout
+    // Jika error 401, hanya log, jangan redirect otomatis
     if (error.response && error.response.status === 401) {
-      // 🔥 PENGECUALIAN: Jangan redirect jika request ke /logout
-      if (error.config.url === '/logout') {
-        return Promise.reject(error) // Biarkan gagal, tapi tidak redirect
-      }
-
-      // Hapus token dan user
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-
-      // Redirect ke login jika belum di halaman login/landing
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-        window.location.href = '/login'
-      }
+      console.warn('⚠️ 401 Unauthorized – token mungkin expired')
+      // Biarkan komponen menangani redirect sendiri
     }
     return Promise.reject(error)
   }
