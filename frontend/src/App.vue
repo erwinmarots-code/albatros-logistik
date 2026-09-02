@@ -140,10 +140,9 @@ export default {
     token.value = null
     user.value = {}
 
-    // Navigasi ke landing page melalui router, lalu reload
-    router.push('/').then(() => {
-      window.location.reload()
-     })
+    // Redirect ke landing page dengan timestamp untuk memecah cache
+    const timestamp = Date.now()
+    window.location.href = '/?_=' + timestamp
     }
 
     const handlePasswordSuccess = (message) => {
