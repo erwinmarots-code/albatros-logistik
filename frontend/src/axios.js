@@ -18,13 +18,12 @@ instance.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+      console.log('✅ Authorization header set:', config.headers.Authorization)
+    } else {
+        console.warn('⚠️ No token found!')
     }
     return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+})
 
 // ============================================================
 // INTERCEPTOR RESPONSE: Handle error 401 (Unauthorized)
