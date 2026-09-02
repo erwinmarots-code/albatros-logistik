@@ -3,7 +3,7 @@
     <div class="login-card">
       <!-- 🔥 LOGO DIPERBESAR -->
       <div class="login-logo">
-        <img src="/images/albatros_logo.jpg" alt="Albatros Logistik" />
+        <img src="/images/albatros_logo_new.jpg" alt="Albatros Logistik" />
         <h2>Albatros Logistik</h2>
         <p>Sistem Manajemen Logistik</p>
       </div>
