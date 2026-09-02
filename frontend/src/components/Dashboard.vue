@@ -1,17 +1,13 @@
 <template>
   <div class="dashboard-container">
-    <!-- HEADER -->
     <div class="dashboard-header">
       <div class="welcome">
         <h1>Dashboard</h1>
         <p>Selamat datang, {{ user?.name || 'User' }}</p>
       </div>
-      <div class="logo-container">
-        <div class="logo-image"></div>
-      </div>
+      <!-- 🔥 LOGO DIHAPUS SEMENTARA -->
     </div>
 
-    <!-- STATISTIK UTAMA -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-folder-open"></i></div>
@@ -43,7 +39,6 @@
       </div>
     </div>
 
-    <!-- RINGKASAN KEUANGAN (hanya untuk super_admin & admin_finance) -->
     <div v-if="canAccessFinance" class="finance-summary">
       <div class="finance-card income">
         <div class="finance-icon"><i class="fas fa-arrow-up"></i></div>
@@ -77,7 +72,6 @@
       </div>
     </div>
 
-    <!-- GRAFIK 6 BULAN TERAKHIR -->
     <div v-if="canAccessFinance" class="chart-card">
       <div class="chart-header">
         <h3>Pendapatan & Pengeluaran 6 Bulan Terakhir</h3>
@@ -91,7 +85,6 @@
       </div>
     </div>
 
-    <!-- TABEL TRANSAKSI TERBARU -->
     <div v-if="canAccessFinance" class="table-card">
       <div class="table-header">
         <h3><i class="fas fa-history"></i> Transaksi Terbaru</h3>
@@ -125,7 +118,6 @@
       </div>
     </div>
 
-    <!-- PROJECT TERBARU -->
     <div class="table-card">
       <div class="table-header">
         <h3><i class="fas fa-folder-open"></i> Project Terbaru</h3>
@@ -155,7 +147,6 @@
       </div>
     </div>
 
-    <!-- PENGAJUAN BIAYA PENDING -->
     <div v-if="canAccessFinance || canAccessTransport" class="table-card">
       <div class="table-header">
         <h3><i class="fas fa-coins"></i> Pengajuan Biaya Pending</h3>
@@ -372,7 +363,6 @@ export default {
   padding: 20px;
 }
 
-/* HEADER */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -391,21 +381,7 @@ export default {
   color: #6b7280;
   margin: 4px 0 0 0;
 }
-.logo-container {
-  flex-shrink: 0;
-}
-.logo-image {
-  height: 60px;
-  width: 120px;
-  background: url('/images/albatros_logo_new.jpg') no-repeat center;
-  background-size: contain;
-  background-color: white;
-  padding: 6px 12px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
 
-/* STATISTIK */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -446,7 +422,6 @@ export default {
   color: #1a202c;
 }
 
-/* KEUANGAN */
 .finance-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -491,7 +466,6 @@ export default {
   color: #1a202c;
 }
 
-/* CHART */
 .chart-card {
   background: white;
   border-radius: 16px;
@@ -531,7 +505,6 @@ export default {
   position: relative;
 }
 
-/* TABEL */
 .table-card {
   background: white;
   border-radius: 16px;
@@ -599,7 +572,6 @@ export default {
   color: #1a202c;
 }
 
-/* BADGE */
 .badge {
   display: inline-block;
   padding: 2px 12px;

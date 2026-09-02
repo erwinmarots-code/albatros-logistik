@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Albatros Logistik</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/main-DDfHaFVJ.css">
+    <link rel="stylesheet" href="/main-BH-1DZ6L.css">
 </head>
 <body>
     <div id="app"></div>
-    <script type="module" src="/main-DbhuzUvh.js"></script>
+    <script type="module" src="/main-DK7fiwwE.js"></script>
 </body>
 </html>

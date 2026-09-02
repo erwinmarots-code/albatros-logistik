@@ -8,8 +8,8 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       input: 'src/main.js',
-      // 🔥 Abaikan semua file gambar di public/
       external: (id) => {
+        // 🔥 ABAIKAN SEMUA FILE DI FOLDER public/images/
         return id.startsWith('/images/')
       }
     }

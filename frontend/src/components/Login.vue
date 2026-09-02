@@ -1,9 +1,8 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <!-- 🔥 LOGO VIA CSS (BUKAN TAG <img>) -->
       <div class="login-logo">
-        <div class="logo-image"></div>
+        <!-- 🔥 LOGO DIHAPUS SEMENTARA -->
         <h2>Albatros Logistik</h2>
         <p>Sistem Manajemen Logistik</p>
       </div>
@@ -105,17 +104,9 @@ export default {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-/* 🔥 LOGO VIA CSS BACKGROUND */
 .login-logo {
   text-align: center;
   margin-bottom: 28px;
-}
-.login-logo .logo-image {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 12px auto;
-  background: url('/images/albatros_logo_new.jpg') no-repeat center;
-  background-size: contain;
 }
 .login-logo h2 {
   font-size: 22px;
@@ -192,10 +183,6 @@ export default {
 @media (max-width: 480px) {
   .login-card {
     padding: 28px 20px;
-  }
-  .login-logo .logo-image {
-    height: 80px;
-    width: 80px;
   }
   .login-logo h2 {
     font-size: 18px;

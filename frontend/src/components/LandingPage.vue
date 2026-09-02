@@ -1,6 +1,5 @@
 <template>
   <div class="landing-page">
-    <!-- ===== NAVBAR ===== -->
     <nav class="navbar">
       <div class="container">
         <div class="logo">
@@ -15,7 +14,6 @@
       </div>
     </nav>
 
-    <!-- ===== HERO SECTION ===== -->
     <section class="hero">
       <div class="container">
         <div class="hero-content">
@@ -33,13 +31,14 @@
             </a>
           </div>
         </div>
-        <div class="hero-image">
-          <img src="https://via.placeholder.com/500x400/1a4a7a/ffffff?text=Albatros+Logistik" alt="Logistik" />
+        <!-- 🔥 TIDAK ADA GAMBAR DI SINI -->
+        <div class="hero-placeholder">
+          <i class="fas fa-ship" style="font-size:80px; color:#1a4a7a;"></i>
+          <p style="color:#4a5568; margin-top:12px;">Solusi Logistik Terintegrasi</p>
         </div>
       </div>
     </section>
 
-    <!-- ===== FEATURES SECTION ===== -->
     <section id="features" class="features">
       <div class="container">
         <div class="section-header">
@@ -58,7 +57,6 @@
       </div>
     </section>
 
-    <!-- ===== STATS SECTION ===== -->
     <section class="stats">
       <div class="container">
         <div class="stats-grid">
@@ -70,7 +68,6 @@
       </div>
     </section>
 
-    <!-- ===== CTA SECTION ===== -->
     <section class="cta">
       <div class="container">
         <div class="cta-content">
@@ -83,7 +80,6 @@
       </div>
     </section>
 
-    <!-- ===== FOOTER ===== -->
     <footer class="footer">
       <div class="container">
         <div class="footer-content">
@@ -283,10 +279,15 @@ const stats = ref([
   color: white;
   transform: translateY(-3px);
 }
-.hero-image img {
-  width: 100%;
-  max-width: 500px;
+.hero-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #e6f0fa;
   border-radius: 20px;
+  padding: 60px 20px;
+  min-height: 300px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.08);
 }
 
@@ -450,9 +451,9 @@ const stats = ref([
   }
   .hero-buttons { justify-content: center; }
   .hero-content h1 { font-size: 32px; }
+  .hero-placeholder { min-height: 200px; padding: 40px 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .footer-content { flex-direction: column; text-align: center; }
-  .hero-image img { max-width: 100%; }
 }
 @media (max-width: 480px) {
   .navbar .container { flex-direction: column; gap: 12px; }
