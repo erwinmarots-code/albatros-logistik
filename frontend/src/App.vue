@@ -130,13 +130,13 @@ export default {
     const showInventory = computed(() => canAccess('spare-parts'))
     const showKeuangan = computed(() => canAccess('invoices') || canAccess('financial-dashboard'))
 
-    const logout = async () => {
+    // 🔥 PERBAIKAN LOGOUT – langsung hapus token dan redirect ke landing page
+    const logout = () => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       token.value = null
       user.value = {}
       window.location.href = '/'
-      try { await axios.post('/logout') } catch (e) {}
     }
 
     const handlePasswordSuccess = (message) => {
